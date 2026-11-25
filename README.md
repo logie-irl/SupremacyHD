@@ -6,6 +6,7 @@ Mastertronic, 1990), the Amiga strategy game, to modern systems:
 - **Windows** 10 and 11 (64-bit)
 - **Linux** (tested on Ubuntu 24.04)
 - **AmigaOS 4.1** Final Edition (PowerPC)
+- **macOS** 27.x (tested on Apple Silicon; added in this fork, see [Building from source](#building-from-source))
 
 The port is a translation of the original Amiga program into portable C, with
 a new platform layer built on [SDL 3](https://www.libsdl.org/). It plays
@@ -306,7 +307,7 @@ cmake --build build
 If the program cannot find `libSDL3.so.0` when it starts, run
 `sudo ldconfig` once and try again.
 
-### macOS (Apple Silicon or Intel; untested by the original author)
+### macOS (27.x, tested on Apple Silicon)
 
 Install [Homebrew](https://brew.sh/), then:
 
