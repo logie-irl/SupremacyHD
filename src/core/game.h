@@ -31,6 +31,9 @@ typedef struct Game {
      * plays it. Fixes for the original's bugs are guarded by this flag and
      * kept for a possible later edition with fixes and new options. */
     int      fix_bugs;
+    /* trainer: 1 = the enemy sends no attacks (set by cheat_peace, not part of the
+     * saved state; 0 plays as the original) */
+    int      peace;
     /* platform callbacks (may be NULL) */
     void   (*play_sound)(struct Game *g, int number);
     void    *user;

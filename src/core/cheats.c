@@ -42,3 +42,18 @@ int cheat_apply(Game *g, int which)
     if (changed) or32(g, G_REDRAW, REDRAW_ALL);
     return changed;
 }
+
+int cheat_peace(Game *g, int on)
+{
+    g->peace = on != 0;
+    if (!on) return 0;
+    int cleared = 0;
+    uint32_t p = g32(g, G_PLANET_TABLE);
+    for (unsigned k = 0; k <= g16(g, 0xE410); k++, p += PLANET_SIZE) {
+        if (g16(g, p + P_OWNER) != OWNER_PLAYER || g16(g, p + 0x26) == 0) continue;
+        s16(g, p + 0x26, 0);                          /* the enemy force on it ($26) */
+        cleared++;
+    }
+    if (cleared) or32(g, G_REDRAW, REDRAW_ALL);
+    return cleared;
+}

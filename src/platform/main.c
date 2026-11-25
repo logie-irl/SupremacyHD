@@ -13,7 +13,8 @@
  *   --fullscreen   start full screen (F11 or Alt+Enter switches at any time;
  *                  the picture is scaled by whole numbers only, with black borders)
  *   --trainer      the cheat keys work: F5 +100,000 credits, F6 fill resources,
- *                  F7 double the people (F8 switches the trainer on and off)
+ *                  F7 double the people, F9 peace: the enemy sends no attacks
+ *                  (F8 switches the trainer on and off)
  *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
@@ -158,7 +159,16 @@ typedef struct App {
     SDL_Texture *tex;
     int scanlines;              /* 1: CRT-style scanlines (F10) */
     int trainer;                /* 1: the cheat keys work (F8) */
+    int peace;                  /* 1: trainer peace is on (F9), for the window title */
 } App;
+
+/* The window title says when the trainer, and peace, are on. */
+static void app_title(App *a)
+{
+    SDL_SetWindowTitle(a->win, !a->trainer ? "Supremacy"
+                               : a->peace ? "Supremacy - TRAINER ON, PEACE (F5 F6 F7 F9)"
+                                          : "Supremacy - TRAINER ON (F5 F6 F7 F9)");
+}
 
 /* The window as the game uses it (after the launcher, which set its own size). */
 static void app_game_mode(App *a, int scale, int fullscreen)
@@ -201,7 +211,8 @@ static int app_event(App *a, const SDL_Event *ev)
     if (k == SDLK_F8) {                 /* the trainer: the title says whether it is on */
         if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat) {
             a->trainer = !a->trainer;
-            SDL_SetWindowTitle(a->win, a->trainer ? "Supremacy - TRAINER ON (F5 F6 F7)" : "Supremacy");
+            if (!a->trainer) a->peace = 0;      /* run_game switches peace off in the game */
+            app_title(a);
         }
         return 1;
     }
@@ -543,6 +554,13 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
                 /* cheats (not in the original); off during a replay so it stays exact */
                 int cheat = k == SDLK_F5 ? CHEAT_CREDITS : k == SDLK_F6 ? CHEAT_RESOURCES
                           : k == SDLK_F7 ? CHEAT_PEOPLE : -1;
+                if (k == SDLK_F9 && a->trainer && !ev.key.repeat && !replay.active) {
+                    a->peace = !a->peace;
+                    int n = cheat_peace(g, a->peace);
+                    app_title(a);
+                    SDL_Log("peace %s (%d enemy forces cleared)", a->peace ? "on" : "off", n);
+                    if (log_file) fprintf(log_file, "# pass %u: peace %d\n", (unsigned)game_pass_no, a->peace);
+                }
                 if (cheat >= 0 && a->trainer && !ev.key.repeat && !replay.active) {
                     int n = cheat_apply(g, cheat);
                     SDL_Log("cheat %d: %d planets", cheat, n);
@@ -551,6 +569,7 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
                 }
             }
         }
+        if (!a->trainer && g->peace) { cheat_peace(g, 0); a->peace = 0; app_title(a); }   /* F8 off */
         /* mouse in the 320x200 picture ($AB4: 0-317, $ABA: 1-197) */
         float wx, wy, lx, ly;
         SDL_MouseButtonFlags bt = SDL_GetMouseState(&wx, &wy);
@@ -893,7 +912,7 @@ int main(int argc, char **argv)
     if (!launched && app_open(&a, scale, fullscreen) != 0) return 1;
     a.scanlines = scanlines;
     a.trainer = trainer;
-    if (trainer) SDL_SetWindowTitle(a.win, "Supremacy - TRAINER ON (F5 F6 F7)");
+    app_title(&a);
     SDL_AudioStream *audio = NULL;
     sound_lock = SDL_CreateMutex();
     if (snd_init(&sound, gd.mem + SOUND_BASE, SOUND_LEN, SOUND_BASE, AUDIO_RATE) == 0) {

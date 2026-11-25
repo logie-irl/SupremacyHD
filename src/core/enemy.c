@@ -117,6 +117,8 @@ uint32_t enemy_choose_target(Game *g)
  * player planet that has no enemy force yet. */
 void enemy_attack(Game *g)
 {
+    if (g->peace)                              /* trainer: no attacks */
+        return;
     uint32_t b = g32(g, G_PLANET_TABLE);
     uint8_t lv = g8(g, G_LEVEL);
     uint16_t at = lv == 0 ? 0x2C38 : lv == 1 ? 0x568C : 0x7D9D;

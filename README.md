@@ -73,7 +73,7 @@ the intro behind the options. The picture is taken from your own `INT1` and
 | Window size | Whole multiples of 320 x 200, as large as your screen allows. |
 | Full screen | Start in full screen. |
 | Scanlines | Darken the lower part of every picture line, like a CRT. Needs a window of 2x or larger; F10 switches it in the game. |
-| Trainer | Turn the cheat keys F5-F7 on (see Controls); F8 switches it in the game. |
+| Trainer | Turn the cheat keys F5-F7 and F9 on (see Controls); F8 switches it in the game. |
 | Replay a session log | Play a recorded session again (see below), then carry on playing. |
 | Load saved game | Continue one of the games saved from the in-game disk menu. |
 
@@ -92,6 +92,7 @@ version, game time stops while you type a name.
 | F11 or Alt+Enter | Switch between window and full screen |
 | F10 | Scanlines on or off |
 | F8 | Trainer on or off (off by default; the window title says when it is on; also a launcher setting or `--trainer`) |
+| F9 | With the trainer on, peace on or off: the enemy sends no attacks while it is on, and enemy forces already on your planets are cleared when you switch it on. Switching the trainer off with F8 also ends peace |
 | F5 / F6 / F7 | With the trainer on, cheats (not in the original): +100,000 credits on each of your planets / fill food, minerals, fuels and energy to 30,000 / double the population and set morale to 100. On a Mac laptop hold Fn. Never during a replay |
 | Close the window | Quit (save first from the in-game disk menu) |
 
@@ -210,7 +211,8 @@ These are not in the original game or in the upstream port:
   darkened, drawn in window pixels so it stays sharp at any whole-number scale.
 - **A trainer** (optional, off by default): F5 adds 100,000 credits to each of
   your planets, F6 fills food, minerals, fuels and energy to 30,000, and F7
-  doubles the population and sets morale to 100. It lives in
+  doubles the population and sets morale to 100, and F9 stops the enemy
+  attacking at all (peace). It lives in
   `src/core/cheats.c`, works on the player's planets only, and is disabled
   during replays so they stay exact.
 
