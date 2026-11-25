@@ -12,7 +12,8 @@
  *   --scale N      window size: N x 320 by N x 200 (default 3)
  *   --fullscreen   start full screen (F11 or Alt+Enter switches at any time;
  *                  the picture is scaled by whole numbers only, with black borders)
- *   (in the game: F5 +100,000 credits, F6 fill resources, F7 double the people; cheats)
+ *   --trainer      the cheat keys work: F5 +100,000 credits, F6 fill resources,
+ *                  F7 double the people (F8 switches the trainer on and off)
  *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
@@ -156,6 +157,7 @@ typedef struct App {
     SDL_Renderer *ren;
     SDL_Texture *tex;
     int scanlines;              /* 1: CRT-style scanlines (F10) */
+    int trainer;                /* 1: the cheat keys work (F8) */
 } App;
 
 /* The window as the game uses it (after the launcher, which set its own size). */
@@ -194,6 +196,13 @@ static int app_event(App *a, const SDL_Event *ev)
     SDL_Keycode k = ev->key.key;
     if (k == SDLK_F10) {
         if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat) a->scanlines = !a->scanlines;
+        return 1;
+    }
+    if (k == SDLK_F8) {                 /* the trainer: the title says whether it is on */
+        if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat) {
+            a->trainer = !a->trainer;
+            SDL_SetWindowTitle(a->win, a->trainer ? "Supremacy - TRAINER ON (F5 F6 F7)" : "Supremacy");
+        }
         return 1;
     }
     int toggle = k == SDLK_F11 || ((k == SDLK_RETURN || k == SDLK_KP_ENTER) && (ev->key.mod & SDL_KMOD_ALT));
@@ -534,7 +543,7 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
                 /* cheats (not in the original); off during a replay so it stays exact */
                 int cheat = k == SDLK_F5 ? CHEAT_CREDITS : k == SDLK_F6 ? CHEAT_RESOURCES
                           : k == SDLK_F7 ? CHEAT_PEOPLE : -1;
-                if (cheat >= 0 && !ev.key.repeat && !replay.active) {
+                if (cheat >= 0 && a->trainer && !ev.key.repeat && !replay.active) {
                     int n = cheat_apply(g, cheat);
                     SDL_Log("cheat %d: %d planets", cheat, n);
                     if (log_file) fprintf(log_file, "# pass %u: cheat %d (%d planets)\n",
@@ -782,7 +791,7 @@ static int run_ending(App *a, const char *dir, int which)
 int main(int argc, char **argv)
 {
     const char *data_dir = "SupremacyData";
-    int opponent = 0, pictures = 0, ending = -2, intro = 1, scale = 3, fullscreen = 0, scanlines = 0;
+    int opponent = 0, pictures = 0, ending = -2, intro = 1, scale = 3, fullscreen = 0, scanlines = 0, trainer = 0;
     double speed = 47.0;
     const char *log_path = NULL, *replay_path = NULL;
     uint32_t seed = (uint32_t)time(NULL) * 2654435761u;
@@ -793,6 +802,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = SDL_atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
+        else if (!strcmp(argv[i], "--trainer")) trainer = 1;
         else if (!strcmp(argv[i], "--log") && i + 1 < argc) log_path = argv[++i];
         else if (!strcmp(argv[i], "--replay") && i + 1 < argc) replay_path = argv[++i];
         else if (!strcmp(argv[i], "--speed") && i + 1 < argc) speed = SDL_atof(argv[++i]);
@@ -846,6 +856,7 @@ int main(int argc, char **argv)
         scale = set.scale;
         fullscreen = set.fullscreen;
         scanlines = set.scanlines;
+        trainer = set.trainer;
         if (set.replay[0]) replay_path = set.replay;
         if (lr == 2) { load_slot = set.load_slot; intro = 0; }   /* LOAD SAVED GAME */
         app_game_mode(&a, scale, fullscreen);
@@ -881,6 +892,8 @@ int main(int argc, char **argv)
     }
     if (!launched && app_open(&a, scale, fullscreen) != 0) return 1;
     a.scanlines = scanlines;
+    a.trainer = trainer;
+    if (trainer) SDL_SetWindowTitle(a.win, "Supremacy - TRAINER ON (F5 F6 F7)");
     SDL_AudioStream *audio = NULL;
     sound_lock = SDL_CreateMutex();
     if (snd_init(&sound, gd.mem + SOUND_BASE, SOUND_LEN, SOUND_BASE, AUDIO_RATE) == 0) {

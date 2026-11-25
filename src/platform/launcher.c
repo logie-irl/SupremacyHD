@@ -27,6 +27,7 @@ void settings_defaults(Settings *s, const char *base)
     s->scale = 3;
     s->fullscreen = 0;
     s->scanlines = 0;
+    s->trainer = 0;
     s->win_w = 2 * LW;
     s->win_h = 2 * LH;
     s->load_slot = -1;
@@ -56,6 +57,7 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "scale")) s->scale = SDL_clamp(SDL_atoi(v), 1, 12);
         else if (!strcmp(k, "fullscreen")) s->fullscreen = SDL_atoi(v) != 0;
         else if (!strcmp(k, "scanlines")) s->scanlines = SDL_atoi(v) != 0;
+        else if (!strcmp(k, "trainer")) s->trainer = SDL_atoi(v) != 0;
         else if (!strcmp(k, "launcher_w")) s->win_w = SDL_clamp(SDL_atoi(v), LW / 2, 8 * LW);
         else if (!strcmp(k, "launcher_h")) s->win_h = SDL_clamp(SDL_atoi(v), LH / 2, 8 * LH);
     }
@@ -68,8 +70,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nscanlines=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\ntrainer=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->trainer,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -593,7 +595,10 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         text(ren, L, y + 4, C_TEXT, "SCANLINES");
         b = button(ren, V, y, 64, s->scanlines ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) s->scanlines = !s->scanlines;
-        text(ren, V + 76, y + 4, C_DIM, "F10 SWITCHES IN THE GAME (WINDOW 2X OR MORE)");
+        text(ren, V + 84, y + 4, C_TEXT, "TRAINER");
+        b = button(ren, V + 148, y, 64, s->trainer ? "ON" : "OFF", hv(V + 148, y, 64, 16, mx, my), 1);
+        if (CLICKED(b)) s->trainer = !s->trainer;
+        text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
         y += 24;
 
         /* replay */

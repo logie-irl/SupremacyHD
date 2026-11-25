@@ -17,6 +17,7 @@ typedef struct Settings {
     int  speed;             /* 0 NORMAL (47 passes/s, the original), 1-4: x1.25 .. x2 */
     int  scale;             /* window size: scale x 320 by scale x 200 */
     int  fullscreen;
+    int  trainer;           /* 1: the cheat keys F5-F7 work (F8 switches in the game) */
     int  scanlines;         /* 1: darken the lower part of every picture line (F10 in the game) */
     char replay[1024];      /* a session log to replay, or "" (not remembered) */
     int  win_w, win_h;      /* the launcher window's size (default 1280 x 800) */
