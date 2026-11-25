@@ -8,6 +8,7 @@
 #include "os4_dialog.h"
 #include "gamedata.h"
 #include "mainscreen.h"
+#include "intro.h"
 
 #define LW 640                      /* logical size of the launcher */
 #define LH 400
@@ -308,6 +309,40 @@ static void make_slot_pictures(SDL_Renderer *ren, const char *data)
     gamedata_free(&gd);
 }
 
+/* The launcher's backdrop: the thinking man from the intro, taken from the
+ * player's own INT1/INT2 (nothing of the game is bundled). The intro is run
+ * invisibly up to the frame where he sits under the star and that picture is
+ * kept as a texture, drawn dimmed behind the options. */
+#define BACKDROP_FRAME 720
+static SDL_Texture *bg_tex;
+static char bg_from[1024];
+
+static void make_backdrop(SDL_Renderer *ren, const char *data)
+{
+    if (!strcmp(bg_from, data)) return;          /* done, or tried, for this folder */
+    if (bg_tex) { SDL_DestroyTexture(bg_tex); bg_tex = NULL; }
+    SDL_strlcpy(bg_from, data, sizeof bg_from);
+    char p1[1100], p2[1100];
+    SDL_snprintf(p1, sizeof p1, "%s/INT1", data);
+    SDL_snprintf(p2, sizeof p2, "%s/INT2", data);
+    size_t l1 = 0, l2 = 0;
+    void *f1 = SDL_LoadFile(p1, &l1), *f2 = SDL_LoadFile(p2, &l2);
+    static Intro in;
+    static uint32_t px[320 * 200];
+    int r = (f1 && f2) ? intro_init(&in, f1, l1, f2, l2) : -1;
+    SDL_free(f1);
+    SDL_free(f2);
+    if (r) return;
+    for (int f = 0; f < BACKDROP_FRAME; f++) intro_frame(&in, -1, -1, 0, 0);
+    intro_render(&in, px);
+    intro_free(&in);
+    bg_tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, 320, 200);
+    if (!bg_tex) return;
+    SDL_UpdateTexture(bg_tex, NULL, px, 320 * 4);
+    SDL_SetTextureScaleMode(bg_tex, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureBlendMode(bg_tex, SDL_BLENDMODE_BLEND);
+}
+
 /* a wide button like PLAY NEW GAME, text at 2x */
 static Box big_button(SDL_Renderer *r, float y, const char *label, int hover, int on)
 {
@@ -448,8 +483,24 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         int nsaves = 0;
         for (int k = 0; k < 4; k++) nsaves += (save_info(base, k, &saves[k]), saves[k].present);
 
+        if (ok) make_backdrop(ren, s->data);
         colour(ren, C_BACK);
         SDL_RenderClear(ren);
+        if (page == 0 && bg_tex) {      /* the thinking man, dimmed, behind the options */
+            SDL_SetTextureAlphaMod(bg_tex, 150);
+            SDL_FRect all = {0, 0, LW, LH};
+            SDL_RenderTexture(ren, bg_tex, NULL, &all);
+            /* a veil behind the option rows keeps the dim hint texts readable; it fades
+             * out towards the bottom so the picture shows under the rows */
+            SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+            for (int y = 56; y < 300; y++) {
+                float t = y < 220 ? 1.0f : 1.0f - (float)(y - 220) / 80.0f;
+                if (y < 76) t = (float)(y - 56) / 20.0f;
+                SDL_SetRenderDrawColor(ren, 8, 6, 20, (Uint8)(165 * t));
+                SDL_RenderLine(ren, 0, (float)y, LW, (float)y);
+            }
+            SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+        }
         if (page == 1) {                /* ---- the LOAD SAVED GAME window ---- */
             make_slot_pictures(ren, s->data);
             Box win_box = {24, 16, LW - 48, LH - 32};

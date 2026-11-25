@@ -61,6 +61,10 @@ archive, an **EXTRACT THE GAME FILES** button appears.
 
 ### The launcher
 
+When the game data folder is valid, the launcher shows the thinking man from
+the intro behind the options. The picture is taken from your own `INT1` and
+`INT2` at run time; nothing of the game is bundled with the program.
+
 | Setting | What it does |
 |---|---|
 | Game data folder | Where the game's files are (BROWSE, EXTRACT). |
