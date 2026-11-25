@@ -748,6 +748,20 @@ int main(int argc, char **argv)
         else data_dir = argv[i];
     }
     const char *base = SDL_GetBasePath();
+#ifdef __APPLE__
+    /* Inside a signed Supremacy.app the base path is in the bundle, which must stay
+     * read-only: keep settings, saved games and the game data under
+     * ~/Library/Application Support/Supremacy/ instead. */
+    static char pref_base[1024];
+    {
+        char *pref = SDL_GetPrefPath("Supremacy", "Supremacy");
+        if (pref) {
+            SDL_strlcpy(pref_base, pref, sizeof pref_base);
+            SDL_free(pref);
+            base = pref_base;
+        }
+    }
+#endif
     SDL_snprintf(save_dir, sizeof save_dir, "%ssave", base ? base : "");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());

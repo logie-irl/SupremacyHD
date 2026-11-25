@@ -267,6 +267,22 @@ cmake --build build
 If the program cannot find `libSDL3.so.0` when it starts, run
 `sudo ldconfig` once and try again.
 
+### macOS (Apple Silicon or Intel; untested by the original author)
+
+Install [Homebrew](https://brew.sh/), then:
+
+```sh
+brew install cmake sdl3
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+./build/supremacy                  # runs next to the build; SupremacyData goes in build/
+sh tools/make_macos_app.sh         # optional: makes Supremacy.app
+```
+
+`Supremacy.app` bundles SDL3 and is ad-hoc signed. When run from the app, the
+settings, saved games and `SupremacyData` live in
+`~/Library/Application Support/Supremacy/`.
+
 ### AmigaOS 4 (cross-compiled)
 
 The AmigaOS 4 version is built on Windows, macOS or Linux with a
