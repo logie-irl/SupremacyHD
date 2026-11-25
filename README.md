@@ -67,6 +67,7 @@ archive, an **EXTRACT THE GAME FILES** button appears.
 | Game speed | Normal (the original speed, 47 game passes a second) up to twice as fast. |
 | Window size | Whole multiples of 320 x 200, as large as your screen allows. |
 | Full screen | Start in full screen. |
+| Scanlines | Darken the lower part of every picture line, like a CRT. Needs a window of 2x or larger; F10 switches it in the game. |
 | Replay a session log | Play a recorded session again (see below), then carry on playing. |
 | Load saved game | Continue one of the games saved from the in-game disk menu. |
 

@@ -26,6 +26,7 @@ void settings_defaults(Settings *s, const char *base)
     s->speed = 0;
     s->scale = 3;
     s->fullscreen = 0;
+    s->scanlines = 0;
     s->win_w = 2 * LW;
     s->win_h = 2 * LH;
     s->load_slot = -1;
@@ -54,6 +55,7 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "speed")) s->speed = SDL_clamp(SDL_atoi(v), 0, 4);
         else if (!strcmp(k, "scale")) s->scale = SDL_clamp(SDL_atoi(v), 1, 12);
         else if (!strcmp(k, "fullscreen")) s->fullscreen = SDL_atoi(v) != 0;
+        else if (!strcmp(k, "scanlines")) s->scanlines = SDL_atoi(v) != 0;
         else if (!strcmp(k, "launcher_w")) s->win_w = SDL_clamp(SDL_atoi(v), LW / 2, 8 * LW);
         else if (!strcmp(k, "launcher_h")) s->win_h = SDL_clamp(SDL_atoi(v), LH / 2, 8 * LH);
     }
@@ -66,8 +68,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -585,6 +587,13 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         b = button(ren, V, y, 64, s->fullscreen ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) s->fullscreen = !s->fullscreen;
         text(ren, V + 76, y + 4, C_DIM, "F11 OR ALT+ENTER SWITCHES IN THE GAME");
+        y += 24;
+
+        /* scanlines */
+        text(ren, L, y + 4, C_TEXT, "SCANLINES");
+        b = button(ren, V, y, 64, s->scanlines ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
+        if (CLICKED(b)) s->scanlines = !s->scanlines;
+        text(ren, V + 76, y + 4, C_DIM, "F10 SWITCHES IN THE GAME (WINDOW 2X OR MORE)");
         y += 24;
 
         /* replay */

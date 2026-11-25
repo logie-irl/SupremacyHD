@@ -12,6 +12,7 @@
  *   --scale N      window size: N x 320 by N x 200 (default 3)
  *   --fullscreen   start full screen (F11 or Alt+Enter switches at any time;
  *                  the picture is scaled by whole numbers only, with black borders)
+ *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
  *   --ending N     only play an end sequence: 0-3 victory over that opponent, -1 defeat
@@ -152,6 +153,7 @@ typedef struct App {
     SDL_Window *win;
     SDL_Renderer *ren;
     SDL_Texture *tex;
+    int scanlines;              /* 1: CRT-style scanlines (F10) */
 } App;
 
 /* The window as the game uses it (after the launcher, which set its own size). */
@@ -182,11 +184,16 @@ static int app_open(App *a, int scale, int fullscreen)
 }
 
 /* F11 or Alt+Enter: full screen on/off (the picture keeps its shape, with
- * black borders). Returns 1 if the event was that key (the game must not see it). */
+ * black borders); F10: scanlines on/off. Returns 1 if the event was one of
+ * those keys (the game must not see it). */
 static int app_event(App *a, const SDL_Event *ev)
 {
     if (ev->type != SDL_EVENT_KEY_DOWN && ev->type != SDL_EVENT_KEY_UP) return 0;
     SDL_Keycode k = ev->key.key;
+    if (k == SDLK_F10) {
+        if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat) a->scanlines = !a->scanlines;
+        return 1;
+    }
     int toggle = k == SDLK_F11 || ((k == SDLK_RETURN || k == SDLK_KP_ENTER) && (ev->key.mod & SDL_KMOD_ALT));
     if (!toggle) return 0;
     if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat)
@@ -194,11 +201,45 @@ static int app_event(App *a, const SDL_Event *ev)
     return 1;
 }
 
+/* Scanlines: the lower part of each of the 200 picture lines is darkened. The
+ * picture is scaled by whole numbers, so a line is `s` window pixels tall; with
+ * s < 2 there is no room for a gap and nothing is drawn. The bands are drawn in
+ * window pixels (the logical presentation is switched off for that), so they
+ * stay sharp at any window size. */
+static void draw_scanlines(App *a)
+{
+    SDL_FRect r;
+    if (!SDL_GetRenderLogicalPresentationRect(a->ren, &r)) return;
+    float s = r.h / 200.0f;
+    if (s < 2.0f) return;
+    float band = (float)(int)(s / 2.0f);
+
+    int lw = 0, lh = 0;
+    SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+    SDL_GetRenderLogicalPresentation(a->ren, &lw, &lh, &mode);
+    Uint8 cr, cg, cb, ca;
+    SDL_BlendMode bm;
+    SDL_GetRenderDrawColor(a->ren, &cr, &cg, &cb, &ca);
+    SDL_GetRenderDrawBlendMode(a->ren, &bm);
+
+    SDL_SetRenderLogicalPresentation(a->ren, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
+    SDL_SetRenderDrawBlendMode(a->ren, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(a->ren, 0, 0, 0, 120);
+    for (int y = 0; y < 200; y++) {
+        SDL_FRect b = {r.x, r.y + (float)y * s + (s - band), r.w, band};
+        SDL_RenderFillRect(a->ren, &b);
+    }
+    SDL_SetRenderLogicalPresentation(a->ren, lw, lh, mode);
+    SDL_SetRenderDrawBlendMode(a->ren, bm);
+    SDL_SetRenderDrawColor(a->ren, cr, cg, cb, ca);
+}
+
 static void app_present(App *a, const uint32_t *px)
 {
     SDL_UpdateTexture(a->tex, NULL, px, 320 * 4);
     SDL_RenderClear(a->ren);
     SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
+    if (a->scanlines) draw_scanlines(a);
     SDL_RenderPresent(a->ren);
 }
 
@@ -730,7 +771,7 @@ static int run_ending(App *a, const char *dir, int which)
 int main(int argc, char **argv)
 {
     const char *data_dir = "SupremacyData";
-    int opponent = 0, pictures = 0, ending = -2, intro = 1, scale = 3, fullscreen = 0;
+    int opponent = 0, pictures = 0, ending = -2, intro = 1, scale = 3, fullscreen = 0, scanlines = 0;
     double speed = 47.0;
     const char *log_path = NULL, *replay_path = NULL;
     uint32_t seed = (uint32_t)time(NULL) * 2654435761u;
@@ -740,6 +781,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--no-intro")) intro = 0;
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = SDL_atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
+        else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
         else if (!strcmp(argv[i], "--log") && i + 1 < argc) log_path = argv[++i];
         else if (!strcmp(argv[i], "--replay") && i + 1 < argc) replay_path = argv[++i];
         else if (!strcmp(argv[i], "--speed") && i + 1 < argc) speed = SDL_atof(argv[++i]);
@@ -792,6 +834,7 @@ int main(int argc, char **argv)
         speed = settings_passes(set.speed);
         scale = set.scale;
         fullscreen = set.fullscreen;
+        scanlines = set.scanlines;
         if (set.replay[0]) replay_path = set.replay;
         if (lr == 2) { load_slot = set.load_slot; intro = 0; }   /* LOAD SAVED GAME */
         app_game_mode(&a, scale, fullscreen);
@@ -826,6 +869,7 @@ int main(int argc, char **argv)
         return 1;
     }
     if (!launched && app_open(&a, scale, fullscreen) != 0) return 1;
+    a.scanlines = scanlines;
     SDL_AudioStream *audio = NULL;
     sound_lock = SDL_CreateMutex();
     if (snd_init(&sound, gd.mem + SOUND_BASE, SOUND_LEN, SOUND_BASE, AUDIO_RATE) == 0) {
