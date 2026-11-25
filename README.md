@@ -110,6 +110,8 @@ supremacy <data folder> [options]
   --speed P      game passes per second (default 47)
   --scale N      window size: N x 320 by N x 200
   --fullscreen   start in full screen
+  --scanlines    CRT-style scanlines (F10 switches; needs a window of 2x or larger)
+  --trainer      the cheat keys F5-F7 work (F8 switches); see Controls
   --log FILE     where to write the session log
   --replay FILE  play a session log again, then carry on
   --ending N     only play an end sequence: 0-3 a victory, -1 the defeat
@@ -190,6 +192,38 @@ replaced. These are the additions and changes:
 - **Windows:** a program icon; only `SDL3.dll` (and the `libiconv-2.dll` it
   uses) are needed beside the program.
 - **Linux:** builds with the system compiler against SDL 3.
+
+### Added in the macOS fork
+
+These are not in the original game or in the upstream port:
+
+- **macOS support**: it builds with CMake and Homebrew's SDL 3, and
+  `tools/make_macos_app.sh` packages a `Supremacy.app` (SDL 3 bundled, ad-hoc
+  signed). On macOS the settings, saved games and `SupremacyData` live in
+  `~/Library/Application Support/Supremacy/`, so the app bundle stays read-only.
+- **Scanlines** (optional): the lower part of each of the 200 picture lines is
+  darkened, drawn in window pixels so it stays sharp at any whole-number scale.
+- **A trainer** (optional, off by default): F5 adds 100,000 credits to each of
+  your planets, F6 fills food, minerals, fuels and energy to 30,000, and F7
+  doubles the population and sets morale to 100. It lives in
+  `src/core/cheats.c`, works on the player's planets only, and is disabled
+  during replays so they stay exact.
+
+### How ground combat is worked out
+
+Once a day per planet (`ground_planet` in `src/core/combat.c`), for the
+platoons stationed there:
+
+- Your strength is the sum over those platoons of
+  `troops + (troops x training / 72) x (suit + weapon + aggression + 1)`.
+  Training runs 0-100 and only grows while a platoon is not stationed.
+- The enemy's strength is its force on the planet x (2 + aggression) / 100
+  (at least 1). Its force grows each day (by 4, 3 or 1 depending on the
+  planet type, up to 12,437), except on the enemy base.
+- If your strength is not greater than the enemy's, your platoons there are
+  wiped out and the planet is lost. Otherwise your troops are scaled to
+  `(yours - enemy) / yours` of their number, and the enemy force falls by 2%
+  of your strength; when it runs out the planet is yours.
 
 ## Building from source
 
@@ -331,7 +365,7 @@ Each program describes its arguments at the top of its source file.
 
 | Path | Contents |
 |---|---|
-| `src/core` | The game logic: state, daily simulation, economy, craft, combat, enemy, events. No platform code. |
+| `src/core` | The game logic: state, daily simulation, economy, craft, combat, enemy, events, and the optional cheats. No platform code. |
 | `src/ui` | The screens, text and graphics routines, the intro and the end sequences. |
 | `src/sound` | The music and effects player and the Paula emulation. |
 | `src/assets` | Loading and unpacking the original data files. |
