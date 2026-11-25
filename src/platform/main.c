@@ -12,6 +12,7 @@
  *   --scale N      window size: N x 320 by N x 200 (default 3)
  *   --fullscreen   start full screen (F11 or Alt+Enter switches at any time;
  *                  the picture is scaled by whole numbers only, with black borders)
+ *   (in the game: F5 +100,000 credits, F6 fill resources, F7 double the people; cheats)
  *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
@@ -38,6 +39,7 @@
 #include "ui.h"
 #include "setup.h"
 #include "day.h"
+#include "cheats.h"
 #include "events.h"
 #include "ending.h"
 #include "intro.h"
@@ -529,6 +531,15 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
                 if (k == SDLK_ESCAPE) key_in(&ui, 27);
                 if (k == SDLK_BACKSPACE || k == SDLK_DELETE) key_in(&ui, 8);
                 if (k == SDLK_RETURN || k == SDLK_KP_ENTER) key_in(&ui, 13);
+                /* cheats (not in the original); off during a replay so it stays exact */
+                int cheat = k == SDLK_F5 ? CHEAT_CREDITS : k == SDLK_F6 ? CHEAT_RESOURCES
+                          : k == SDLK_F7 ? CHEAT_PEOPLE : -1;
+                if (cheat >= 0 && !ev.key.repeat && !replay.active) {
+                    int n = cheat_apply(g, cheat);
+                    SDL_Log("cheat %d: %d planets", cheat, n);
+                    if (log_file) fprintf(log_file, "# pass %u: cheat %d (%d planets)\n",
+                                          (unsigned)game_pass_no, cheat, n);
+                }
             }
         }
         /* mouse in the 320x200 picture ($AB4: 0-317, $ABA: 1-197) */

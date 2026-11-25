@@ -84,6 +84,8 @@ version, game time stops while you type a name.
 | Key | Action |
 |---|---|
 | F11 or Alt+Enter | Switch between window and full screen |
+| F10 | Scanlines on or off |
+| F5 / F6 / F7 | Cheats (not in the original): +100,000 credits on each of your planets / fill food, minerals, fuels and energy to 30,000 / double the population and set morale to 100. On a Mac laptop hold Fn. Off during a replay |
 | Close the window | Quit (save first from the in-game disk menu) |
 
 ### Saved games and logs

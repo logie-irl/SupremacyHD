@@ -24,6 +24,7 @@ set(CORE_SOURCES
   src/core/enemy.c
   src/core/events.c
   src/core/day.c
+  src/core/cheats.c
 )
 
 # The game core as a static library (for the game) ...
