@@ -72,6 +72,7 @@ the intro behind the options. The picture is taken from your own `INT1` and
 | Game speed | Normal (the original speed, 47 game passes a second) up to twice as fast. |
 | Window size | Whole multiples of 320 x 200, as large as your screen allows. |
 | Full screen | Start in full screen. |
+| Display | **Pixel**: sharp square pixels, whole-number scaling. **Smooth**: fills the window at any size and stays sharp. **4:3**: the Amiga monitor's shape (its pixels were taller than wide), so the picture is 320x240. F12 cycles them in the game. |
 | Scanlines | Darken the lower part of every picture line, like a CRT. Needs a window of 2x or larger; F10 switches it in the game. |
 | Trainer | Turn the cheat keys F5-F7 and F9 on (see Controls); F8 switches it in the game. |
 | Bug fixes | Fix the original game's bugs (see "Bug fixes" below). Off by default: the game then plays exactly as the original did. |
@@ -92,6 +93,7 @@ version, game time stops while you type a name.
 |---|---|
 | F11 or Alt+Enter | Switch between window and full screen |
 | F10 | Scanlines on or off |
+| F12 | Display: Pixel, Smooth, 4:3 |
 | F8 | Trainer on or off (off by default; the window title says when it is on; also a launcher setting or `--trainer`) |
 | F9 | With the trainer on, peace on or off: the enemy sends no attacks while it is on, and enemy forces already on your planets are cleared when you switch it on. Switching the trainer off with F8 also ends peace |
 | F5 / F6 / F7 | With the trainer on, cheats (not in the original): +100,000 credits on each of your planets / fill food, minerals, fuels and energy to 30,000 / double the population and set morale to 100. On a Mac laptop hold Fn. Never during a replay |
@@ -117,6 +119,7 @@ supremacy <data folder> [options]
   --speed P      game passes per second (default 47)
   --scale N      window size: N x 320 by N x 200
   --fullscreen   start in full screen
+  --display N    0 pixel (default), 1 smooth, 2 4:3 monitor shape (F12 switches)
   --scanlines    CRT-style scanlines (F10 switches; needs a window of 2x or larger)
   --trainer      the cheat keys F5-F7 work (F8 switches); see Controls
   --fix-bugs     fix the original game's bugs; see "Bug fixes"

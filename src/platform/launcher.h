@@ -21,6 +21,7 @@ typedef struct Settings {
     int  bundled;           /* 1: the game files are inside the app, so no folder is asked for (not saved) */
     int  touch;             /* touch screens: 0 a tap clicks where touched, 1 a trackpad (three-finger tap switches) */
     int  bugfixes;          /* 1: the original's bugs are fixed (see README, "Bug fixes") */
+    int  display;           /* 0 PIXEL (sharp, whole-number scaling), 1 SMOOTH (fills the window), 2 4:3 (Amiga monitor shape; F12) */
     int  scanlines;         /* 1: darken the lower part of every picture line (F10 in the game) */
     char replay[1024];      /* a session log to replay, or "" (not remembered) */
     int  win_w, win_h;      /* the launcher window's size (default 1280 x 800) */

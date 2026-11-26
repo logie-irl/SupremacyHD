@@ -161,12 +161,56 @@ typedef struct App {
     SDL_Window *win;
     SDL_Renderer *ren;
     SDL_Texture *tex;
+    SDL_Texture *mid;           /* the picture enlarged by whole numbers, for the smooth and 4:3 displays */
+    int mid_w, mid_h;
     int scanlines;              /* 1: CRT-style scanlines (F10) */
     int trainer;                /* 1: the cheat keys work (F8) */
     int peace;                  /* 1: trainer peace is on (F9), for the window title */
     const char *toast;          /* a short message drawn over the picture (touch mode changes) */
     Uint64 toast_until;
 } App;
+
+
+/* Display modes (F12 switches, the launcher and --display set them):
+ *   0 PIXEL   sharp square pixels, whole-number scaling (the original look on a modern screen)
+ *   1 SMOOTH  the same picture, but it fills the window at any size without uneven pixels
+ *   2 4:3     the picture is stretched to 4:3 as on the Amiga's monitor (its pixels were taller than wide)
+ * SMOOTH and 4:3 first enlarge the picture by whole numbers (5x in width, 5x or 6x in height) and
+ * let the graphics card scale that smoothly, so the pixels stay sharp. */
+static int opt_display;
+#define DISPLAY_MODES 3
+static const char *const display_names[DISPLAY_MODES] = {"PIXEL", "SMOOTH", "4:3"};
+
+static int display_height(int d) { return d == 2 ? 240 : 200; }       /* the picture's shape: 320 x this */
+
+static void app_apply_display(App *a)
+{
+    if (!a->ren) return;
+    if (opt_display < 1) {
+        SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+        return;
+    }
+    int mh = opt_display == 2 ? 1200 : 1000;
+    if (!a->mid || a->mid_h != mh) {
+        if (a->mid) SDL_DestroyTexture(a->mid);
+        a->mid = SDL_CreateTexture(a->ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, 1600, mh);
+        a->mid_w = 1600;
+        a->mid_h = mh;
+        if (a->mid) SDL_SetTextureScaleMode(a->mid, SDL_SCALEMODE_LINEAR);
+    }
+    if (!a->mid) { opt_display = 0; app_apply_display(a); return; }           /* no render targets: stay sharp */
+    SDL_SetRenderLogicalPresentation(a->ren, a->mid_w, a->mid_h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+}
+
+/* A window position -> a position in the 320x200 picture. */
+static void app_game_coords(App *a, float wx, float wy, float *lx, float *ly)
+{
+    SDL_RenderCoordinatesFromWindow(a->ren, wx, wy, lx, ly);
+    if (opt_display >= 1 && a->mid) {
+        *lx = *lx * 320.0f / (float)a->mid_w;
+        *ly = *ly * 200.0f / (float)a->mid_h;
+    }
+}
 
 /* The window title says when the trainer, and peace, are on. */
 static void app_title(App *a)
@@ -181,12 +225,12 @@ static void app_game_mode(App *a, int scale, int fullscreen)
 {
     if (scale < 1) scale = 1;
     if (touch_present()) {              /* a phone: always full screen, the system sizes the window */
-        SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+        app_apply_display(a);
         return;
     }
-    SDL_SetWindowSize(a->win, 320 * scale, 200 * scale);
+    SDL_SetWindowSize(a->win, 320 * scale, display_height(opt_display) * scale);
     SDL_SetWindowPosition(a->win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-    SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+    app_apply_display(a);
     SDL_SetWindowFullscreen(a->win, fullscreen != 0);
 }
 
@@ -203,13 +247,13 @@ static int app_open(App *a, int scale, int fullscreen)
     SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
     fl |= SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 #endif
-    if (!SDL_CreateWindowAndRenderer("Supremacy", 320 * scale, 200 * scale, fl, &a->win, &a->ren)) {
+    if (!SDL_CreateWindowAndRenderer("Supremacy", 320 * scale, display_height(opt_display) * scale, fl, &a->win, &a->ren)) {
         fprintf(stderr, "window: %s\n", SDL_GetError());
         return -1;
     }
-    SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
     a->tex = SDL_CreateTexture(a->ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 320, 200);
     SDL_SetTextureScaleMode(a->tex, SDL_SCALEMODE_NEAREST);
+    app_apply_display(a);
     return 0;
 }
 
@@ -222,6 +266,20 @@ static int app_event(App *a, const SDL_Event *ev)
     SDL_Keycode k = ev->key.key;
     if (k == SDLK_F10) {
         if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat) a->scanlines = !a->scanlines;
+        return 1;
+    }
+    if (k == SDLK_F12) {                /* display: PIXEL -> SMOOTH -> 4:3 */
+        if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat) {
+            opt_display = (opt_display + 1) % DISPLAY_MODES;
+            if (!(SDL_GetWindowFlags(a->win) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED))) {
+                int w, h;
+                SDL_GetWindowSize(a->win, &w, &h);
+                SDL_SetWindowSize(a->win, w, w * display_height(opt_display) / 320);
+            }
+            app_apply_display(a);
+            a->toast = display_names[opt_display];
+            a->toast_until = SDL_GetTicks() + 1500;
+        }
         return 1;
     }
     if (k == SDLK_F8) {                 /* the trainer: the title says whether it is on */
@@ -272,21 +330,50 @@ static void draw_scanlines(App *a)
     SDL_SetRenderDrawColor(a->ren, cr, cg, cb, ca);
 }
 
+static void draw_toast(App *a, const char *t)
+{
+    SDL_SetRenderDrawColor(a->ren, 0, 0, 0, 255);
+    SDL_FRect bg = {2, 2, 8.0f * (float)SDL_strlen(t) + 4, 12};
+    SDL_RenderFillRect(a->ren, &bg);
+    SDL_SetRenderDrawColor(a->ren, 255, 255, 255, 255);
+    SDL_RenderDebugText(a->ren, 4, 4, t);
+}
+
 static void app_present(App *a, const uint32_t *px)
 {
     SDL_UpdateTexture(a->tex, NULL, px, 320 * 4);
+    const char *t = touch_take_toast();
+    if (t) { a->toast = t; a->toast_until = SDL_GetTicks() + 1500; }
+    int show_toast = a->toast && SDL_GetTicks() < a->toast_until;
+    if (opt_display >= 1 && a->mid) {
+        /* the picture, enlarged by whole numbers, into the middle texture (scanlines and the
+         * message are drawn there too, in its pixels); then that is scaled smoothly to the window */
+        SDL_SetRenderTarget(a->ren, a->mid);
+        SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
+        if (a->scanlines) {
+            float s = (float)a->mid_h / 200.0f, band = (float)(int)(s / 2.0f);
+            SDL_SetRenderDrawBlendMode(a->ren, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(a->ren, 0, 0, 0, 120);
+            for (int y = 0; y < 200; y++) {
+                SDL_FRect b = {0, (float)y * s + (s - band), (float)a->mid_w, band};
+                SDL_RenderFillRect(a->ren, &b);
+            }
+        }
+        if (show_toast) {
+            SDL_SetRenderScale(a->ren, (float)a->mid_w / 320.0f, (float)a->mid_h / 200.0f);
+            draw_toast(a, a->toast);
+            SDL_SetRenderScale(a->ren, 1.0f, 1.0f);
+        }
+        SDL_SetRenderTarget(a->ren, NULL);
+        SDL_RenderClear(a->ren);
+        SDL_RenderTexture(a->ren, a->mid, NULL, NULL);
+        SDL_RenderPresent(a->ren);
+        return;
+    }
     SDL_RenderClear(a->ren);
     SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
     if (a->scanlines) draw_scanlines(a);
-    const char *t = touch_take_toast();
-    if (t) { a->toast = t; a->toast_until = SDL_GetTicks() + 1500; }
-    if (a->toast && SDL_GetTicks() < a->toast_until) {
-        SDL_SetRenderDrawColor(a->ren, 0, 0, 0, 255);
-        SDL_FRect bg = {2, 2, 8.0f * (float)SDL_strlen(a->toast) + 4, 12};
-        SDL_RenderFillRect(a->ren, &bg);
-        SDL_SetRenderDrawColor(a->ren, 255, 255, 255, 255);
-        SDL_RenderDebugText(a->ren, 4, 4, a->toast);
-    }
+    if (show_toast) draw_toast(a, a->toast);
     SDL_RenderPresent(a->ren);
 }
 
@@ -605,7 +692,7 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
         /* mouse in the 320x200 picture ($AB4: 0-317, $ABA: 1-197) */
         float wx, wy, lx, ly;
         SDL_MouseButtonFlags bt = touch_mouse_state(&wx, &wy);
-        SDL_RenderCoordinatesFromWindow(a->ren, wx, wy, &lx, &ly);
+        app_game_coords(a, wx, wy, &lx, &ly);
         Mouse ms;
         ms.x = (int16_t)SDL_clamp((int)lx, 0, 317);
         ms.y = (int16_t)SDL_clamp((int)ly, 1, 197);
@@ -736,7 +823,7 @@ static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
         }
         float wx, wy, lx, ly;
         SDL_MouseButtonFlags bt = touch_mouse_state(&wx, &wy);
-        SDL_RenderCoordinatesFromWindow(a->ren, wx, wy, &lx, &ly);
+        app_game_coords(a, wx, wy, &lx, &ly);
         int held = ((bt & SDL_BUTTON_LMASK) ? 1 : 0) | ((bt & SDL_BUTTON_RMASK) ? 2 : 0);
         uint64_t now = SDL_GetTicksNS();
         for (int n = 0; now >= next && n < 4 && running; n++) {
@@ -853,6 +940,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = SDL_atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
+        else if (!strcmp(argv[i], "--display") && i + 1 < argc) { opt_display = SDL_atoi(argv[++i]); opt_display = SDL_clamp(opt_display, 0, DISPLAY_MODES - 1); }
         else if (!strcmp(argv[i], "--trainer")) trainer = 1;
         else if (!strcmp(argv[i], "--fix-bugs")) opt_fix_bugs = 1;
         else if (!strcmp(argv[i], "--trackpad")) touch_set_mode(1);
@@ -923,6 +1011,7 @@ int main(int argc, char **argv)
         scale = set.scale;
         fullscreen = set.fullscreen;
         scanlines = set.scanlines;
+        opt_display = SDL_clamp(set.display, 0, DISPLAY_MODES - 1);
         trainer = set.trainer;
         opt_fix_bugs = set.bugfixes;
         touch_set_mode(set.touch);

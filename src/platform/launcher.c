@@ -29,6 +29,7 @@ void settings_defaults(Settings *s, const char *base)
     s->scale = 3;
     s->fullscreen = 0;
     s->scanlines = 0;
+    s->display = 0;
     s->trainer = 0;
     s->bugfixes = 0;
     s->touch = 0;
@@ -61,6 +62,7 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "scale")) s->scale = SDL_clamp(SDL_atoi(v), 1, 12);
         else if (!strcmp(k, "fullscreen")) s->fullscreen = SDL_atoi(v) != 0;
         else if (!strcmp(k, "scanlines")) s->scanlines = SDL_atoi(v) != 0;
+        else if (!strcmp(k, "display")) s->display = SDL_clamp(SDL_atoi(v), 0, 2);
         else if (!strcmp(k, "trainer")) s->trainer = SDL_atoi(v) != 0;
         else if (!strcmp(k, "bugfixes")) s->bugfixes = SDL_atoi(v) != 0;
         else if (!strcmp(k, "touch")) s->touch = SDL_atoi(v) != 0;
@@ -76,8 +78,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nscanlines=%d\ntrainer=%d\nbugfixes=%d\ntouch=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->trainer, s->bugfixes, s->touch,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\ndisplay=%d\ntrainer=%d\nbugfixes=%d\ntouch=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->display, s->trainer, s->bugfixes, s->touch,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -639,7 +641,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
             text(ren, V + 28 + (80 - (float)strlen(num) * CH) / 2, y + 4, C_VALUE, num);
             b = button(ren, V + 112, y, 24, ">", hv(V + 112, y, 24, 16, mx, my), s->scale < max_scale);
             if (CLICKED(b)) s->scale = SDL_min(max_scale, s->scale + 1);
-            SDL_snprintf(num, sizeof num, "%d X %d", 320 * s->scale, 200 * s->scale);
+            SDL_snprintf(num, sizeof num, "%d X %d", 320 * s->scale, (s->display == 2 ? 240 : 200) * s->scale);
             text(ren, V + 148, y + 4, C_DIM, num);
             y += 24;
         }
@@ -650,6 +652,18 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
             b = button(ren, V, y, 64, s->fullscreen ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
             if (CLICKED(b)) s->fullscreen = !s->fullscreen;
             text(ren, V + 76, y + 4, C_DIM, "F11 OR ALT+ENTER SWITCHES IN THE GAME");
+            y += 24;
+        }
+
+        /* display */
+        {
+            static const char *const dn[3] = {"PIXEL", "SMOOTH", "4:3"};
+            static const char *const dh[3] = {"SHARP SQUARE PIXELS", "FILLS THE WINDOW, STILL SHARP", "AMIGA MONITOR SHAPE"};
+            text(ren, L, y + 4, C_TEXT, "DISPLAY");
+            b = button(ren, V, y, 64, dn[s->display % 3], hv(V, y, 64, 16, mx, my), 1);
+            if (CLICKED(b)) s->display = (s->display + 1) % 3;
+            text(ren, V + 76, y + 4, C_DIM, dh[s->display % 3]);
+            if (!touch_present()) text(ren, V + 76 + 8 * (float)strlen(dh[s->display % 3]) + 12, y + 4, C_DIM, "F12");
             y += 24;
         }
 
