@@ -29,6 +29,7 @@ void settings_defaults(Settings *s, const char *base)
     s->fullscreen = 0;
     s->scanlines = 0;
     s->trainer = 0;
+    s->bugfixes = 0;
     s->win_w = 2 * LW;
     s->win_h = 2 * LH;
     s->load_slot = -1;
@@ -59,6 +60,7 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "fullscreen")) s->fullscreen = SDL_atoi(v) != 0;
         else if (!strcmp(k, "scanlines")) s->scanlines = SDL_atoi(v) != 0;
         else if (!strcmp(k, "trainer")) s->trainer = SDL_atoi(v) != 0;
+        else if (!strcmp(k, "bugfixes")) s->bugfixes = SDL_atoi(v) != 0;
         else if (!strcmp(k, "launcher_w")) s->win_w = SDL_clamp(SDL_atoi(v), LW / 2, 8 * LW);
         else if (!strcmp(k, "launcher_h")) s->win_h = SDL_clamp(SDL_atoi(v), LH / 2, 8 * LH);
     }
@@ -71,8 +73,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nscanlines=%d\ntrainer=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->trainer,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\ntrainer=%d\nbugfixes=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->trainer, s->bugfixes,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -650,6 +652,13 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         b = button(ren, V + 148, y, 64, s->trainer ? "ON" : "OFF", hv(V + 148, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) s->trainer = !s->trainer;
         text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
+        y += 24;
+
+        /* bug fixes */
+        text(ren, L, y + 4, C_TEXT, "BUG FIXES");
+        b = button(ren, V, y, 64, s->bugfixes ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
+        if (CLICKED(b)) s->bugfixes = !s->bugfixes;
+        text(ren, V + 76, y + 4, C_DIM, s->bugfixes ? "THE ORIGINAL'S BUGS ARE FIXED" : "PLAYS AS THE ORIGINAL DID");
         y += 24;
 
         /* replay */

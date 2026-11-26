@@ -74,6 +74,7 @@ the intro behind the options. The picture is taken from your own `INT1` and
 | Full screen | Start in full screen. |
 | Scanlines | Darken the lower part of every picture line, like a CRT. Needs a window of 2x or larger; F10 switches it in the game. |
 | Trainer | Turn the cheat keys F5-F7 and F9 on (see Controls); F8 switches it in the game. |
+| Bug fixes | Fix the original game's bugs (see "Bug fixes" below). Off by default: the game then plays exactly as the original did. |
 | Replay a session log | Play a recorded session again (see below), then carry on playing. |
 | Load saved game | Continue one of the games saved from the in-game disk menu. |
 
@@ -118,6 +119,7 @@ supremacy <data folder> [options]
   --fullscreen   start in full screen
   --scanlines    CRT-style scanlines (F10 switches; needs a window of 2x or larger)
   --trainer      the cheat keys F5-F7 work (F8 switches); see Controls
+  --fix-bugs     fix the original game's bugs; see "Bug fixes"
   --log FILE     where to write the session log
   --replay FILE  play a session log again, then carry on
   --ending N     only play an end sequence: 0-3 a victory, -1 the defeat
@@ -142,8 +144,9 @@ replaced. These are the additions and changes:
   WHDLoad version.
 - **The WHDLoad version's behaviour.** The port matches WHDLoad V1.1,
   including its two fixes (a sound-number clamp and the "can't carry" craft
-  class test). Fixes for the original's other bugs are in the code but
-  switched off by default (`fix_bugs`), so the game plays as it always did.
+  class test). Fixes for the original's other bugs are optional (the launcher's
+  **Bug fixes**, or `--fix-bugs`) and off by default, so the game plays as it
+  always did. See "Bug fixes" below.
 - **No original data in the program.** Tables and texts the game needs are
   read from your own copy at start-up rather than built in.
 
@@ -215,6 +218,33 @@ These are not in the original game or in the upstream port:
   attacking at all (peace). It lives in
   `src/core/cheats.c`, works on the player's planets only, and is disabled
   during replays so they stay exact.
+
+### Bug fixes
+
+Switch on **Bug fixes** in the launcher (or start with `--fix-bugs`) to fix
+the original game's bugs. It is off by default, so the game plays exactly as
+the original did. Bug fixes are always off while a session log is replayed, so
+logs recorded without them stay exact (a log recorded with them on will drift,
+because the log does not store the setting). Saved games work with either
+setting. The fixes (each is marked in the source, in `craft.c`, `combat.c`, `enemy.c`, `events.c` and `day.c`):
+
+| Where | The bug | With the fix |
+|---|---|---|
+| Craft: launch, scrap, format | When a craft is in none of a planet's dock slots, slot 3 is cleared anyway, throwing out whatever is docked there (for example after formatting with a processor sitting on a surface) | A slot is cleared only if it holds the craft |
+| Craft: launch | Launching a nuclear craft such as a solar satellite takes 100 fuel it does not have, so its tank wraps to 65,436 (and scrapping it later wraps the planet's fuel) | No fuel is taken from nuclear craft |
+| Craft: launch, dock | Slots are used on the planet shown on the fleet screen, not on the craft's own planet | The craft's own planet is used |
+| Craft: stop | STOP on an atmosphere processor that is formatting leaves it set to format, so the planet is formatted although the processor never arrives | STOP does nothing for a processor that is formatting |
+| Craft: transit | A craft in transit with 0 days left is never processed again, so such a format never finishes | It arrives on that pass |
+| Cargo: unload everything | The 30,000 limit is tested on one planet but the cargo goes to another; if that one is full, the loop never ends | The limit is tested on the planet unloaded onto |
+| Combat | After a conquest, the +7 training bonus goes to platoons on the planet on show instead of the winning platoons | It goes to the winners |
+| Combat | A conquest made as the combat screen opens writes the owner, name and captured craft to the wrong planet | It writes to the conquered planet |
+| Enemy attack | The enemy's target search reads one record past the end of the planet table | The search stops at the last planet |
+| Events: ships destroyed | The planet's dock slot is not cleared (the wrong address is tested), so it keeps pointing at a destroyed craft | The slot is cleared |
+| War tension | If the enemy owns every planet, the display reads past the end of its table and starts a stray sound | The last real entry is used (full red, no new sound) |
+| Events: aracno-locusts | The event tests for the year 1014, which never comes, so it never happens | It happens in 2019 (the original's intended year is unknown) |
+
+A few other oddities are left as the original game plays them, because they
+look like design choices rather than bugs.
 
 ### How ground combat is worked out
 

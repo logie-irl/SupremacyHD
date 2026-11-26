@@ -7,9 +7,9 @@
  *       destroyed craft, but tested $EC74+$18/$1C/$20 (a2 had been reused
  *       for the platoon loop), so the slot kept pointing at the empty bay.
  *       Fixed: the planet's own +$18/+$1C/+$20.
- *   (not fixed) Script 16 (aracno-locusts) tests the year $3F6 = 1014, so
- *       it never fires. The intended year is unknown; the port plays it as
- *       the WHDLoad version does.
+ *   F2  Script 16 (aracno-locusts) tests the year $3F6 = 1014, so it never
+ *       fires. The intended year is unknown; with fix_bugs it fires in 2019
+ *       (a year no other event uses).
  */
 #include "events.h"
 #include "enemy.h"
@@ -190,6 +190,8 @@ int events_resume(Game *g, uint32_t pc, int sc, uint32_t *resume)
         case 0x04: a = L(); v = W(); if (rd8(g, a, sc) != (uint8_t)v) return EV_STOP; break;
         case 0x08:
             a = L(); v = W();
+            if (g->fix_bugs && v == 0x3F6)      /* script 16: the year 1014 can never come; play it in 2019 */
+                v = 0x7E3;
             if (rd16(g, a, sc) != v) return EV_STOP;
             break;
         case 0x0C: a = L(); v = L(); if (rd32(g, a, sc) != v) return EV_STOP; break;

@@ -15,6 +15,8 @@
  *   --trainer      the cheat keys work: F5 +100,000 credits, F6 fill resources,
  *                  F7 double the people, F9 peace: the enemy sends no attacks
  *                  (F8 switches the trainer on and off)
+ *   --fix-bugs     fix the original game's bugs (see README; off = plays as the original did;
+ *                  ignored when a session log is replayed)
  *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
@@ -478,6 +480,8 @@ static const char *handler_name(uint32_t h)
 /* Returns 0 (quit), or 1 with *ending = the end sequence to play. */
 /* load_slot >= 0: the game starts from that save (SSG1-4), as the options
  * panel's LOAD leaves it: the state block replaced, then the main screen. */
+static int opt_fix_bugs;    /* --fix-bugs / the launcher's BUG FIXES */
+
 static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, double speed,
                     int load_slot, int *ending)
 {
@@ -489,6 +493,7 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
     if (!g) return 1;
     g->play_sound = game_sound;
     game_set_image(g, gd->mem);
+    game_set_fix_bugs(g, opt_fix_bugs && !replay.active);
     screen_init(&scr, gd->mem + FONT_ADDR);
     main_init(&ui, &scr, g, gd->mem);
     main_new_game_screen(&ui);
@@ -822,6 +827,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
         else if (!strcmp(argv[i], "--trainer")) trainer = 1;
+        else if (!strcmp(argv[i], "--fix-bugs")) opt_fix_bugs = 1;
         else if (!strcmp(argv[i], "--log") && i + 1 < argc) log_path = argv[++i];
         else if (!strcmp(argv[i], "--replay") && i + 1 < argc) replay_path = argv[++i];
         else if (!strcmp(argv[i], "--speed") && i + 1 < argc) speed = SDL_atof(argv[++i]);
@@ -876,6 +882,7 @@ int main(int argc, char **argv)
         fullscreen = set.fullscreen;
         scanlines = set.scanlines;
         trainer = set.trainer;
+        opt_fix_bugs = set.bugfixes;
         if (set.replay[0]) replay_path = set.replay;
         if (lr == 2) { load_slot = set.load_slot; intro = 0; }   /* LOAD SAVED GAME */
         app_game_mode(&a, scale, fullscreen);
