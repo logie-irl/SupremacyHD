@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 
 #include "launcher.h"
+#include "touch.h"
 #include "extract.h"
 #include "os4_dialog.h"
 #include "gamedata.h"
@@ -30,6 +31,7 @@ void settings_defaults(Settings *s, const char *base)
     s->scanlines = 0;
     s->trainer = 0;
     s->bugfixes = 0;
+    s->touch = 0;
     s->win_w = 2 * LW;
     s->win_h = 2 * LH;
     s->load_slot = -1;
@@ -61,6 +63,7 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "scanlines")) s->scanlines = SDL_atoi(v) != 0;
         else if (!strcmp(k, "trainer")) s->trainer = SDL_atoi(v) != 0;
         else if (!strcmp(k, "bugfixes")) s->bugfixes = SDL_atoi(v) != 0;
+        else if (!strcmp(k, "touch")) s->touch = SDL_atoi(v) != 0;
         else if (!strcmp(k, "launcher_w")) s->win_w = SDL_clamp(SDL_atoi(v), LW / 2, 8 * LW);
         else if (!strcmp(k, "launcher_h")) s->win_h = SDL_clamp(SDL_atoi(v), LH / 2, 8 * LH);
     }
@@ -73,8 +76,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nscanlines=%d\ntrainer=%d\nbugfixes=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->trainer, s->bugfixes,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\ntrainer=%d\nbugfixes=%d\ntouch=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->trainer, s->bugfixes, s->touch,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -424,11 +427,11 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
     int result = -1;
     while (result < 0) {
         float mx = -1, my = -1;
-        SDL_GetMouseState(&mx, &my);
+        touch_mouse_state(&mx, &my);
         SDL_RenderCoordinatesFromWindow(ren, mx, my, &mx, &my);
         int click = 0;
         SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
+        while (touch_poll_event(&ev)) {
             if (ev.type == SDL_EVENT_QUIT) { result = 0; SDL_Log("launcher: quit event"); }
             if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN && ev.button.button == SDL_BUTTON_LEFT) {
                 click = 1;
@@ -627,24 +630,28 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         y += 24;
 
         /* window size */
-        text(ren, L, y + 4, C_TEXT, "WINDOW SIZE");
-        b = button(ren, V, y, 24, "<", hv(V, y, 24, 16, mx, my), s->scale > 1);
-        if (CLICKED(b)) s->scale = SDL_max(1, s->scale - 1);
-        SDL_snprintf(num, sizeof num, "%dX", s->scale);
-        frame(ren, (Box){V + 28, y, 80, 16}, C_PANEL, C_DIM);
-        text(ren, V + 28 + (80 - (float)strlen(num) * CH) / 2, y + 4, C_VALUE, num);
-        b = button(ren, V + 112, y, 24, ">", hv(V + 112, y, 24, 16, mx, my), s->scale < max_scale);
-        if (CLICKED(b)) s->scale = SDL_min(max_scale, s->scale + 1);
-        SDL_snprintf(num, sizeof num, "%d X %d", 320 * s->scale, 200 * s->scale);
-        text(ren, V + 148, y + 4, C_DIM, num);
-        y += 24;
+        if (!touch_present()) {
+            text(ren, L, y + 4, C_TEXT, "WINDOW SIZE");
+            b = button(ren, V, y, 24, "<", hv(V, y, 24, 16, mx, my), s->scale > 1);
+            if (CLICKED(b)) s->scale = SDL_max(1, s->scale - 1);
+            SDL_snprintf(num, sizeof num, "%dX", s->scale);
+            frame(ren, (Box){V + 28, y, 80, 16}, C_PANEL, C_DIM);
+            text(ren, V + 28 + (80 - (float)strlen(num) * CH) / 2, y + 4, C_VALUE, num);
+            b = button(ren, V + 112, y, 24, ">", hv(V + 112, y, 24, 16, mx, my), s->scale < max_scale);
+            if (CLICKED(b)) s->scale = SDL_min(max_scale, s->scale + 1);
+            SDL_snprintf(num, sizeof num, "%d X %d", 320 * s->scale, 200 * s->scale);
+            text(ren, V + 148, y + 4, C_DIM, num);
+            y += 24;
+        }
 
         /* full screen */
-        text(ren, L, y + 4, C_TEXT, "FULL SCREEN");
-        b = button(ren, V, y, 64, s->fullscreen ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
-        if (CLICKED(b)) s->fullscreen = !s->fullscreen;
-        text(ren, V + 76, y + 4, C_DIM, "F11 OR ALT+ENTER SWITCHES IN THE GAME");
-        y += 24;
+        if (!touch_present()) {
+            text(ren, L, y + 4, C_TEXT, "FULL SCREEN");
+            b = button(ren, V, y, 64, s->fullscreen ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
+            if (CLICKED(b)) s->fullscreen = !s->fullscreen;
+            text(ren, V + 76, y + 4, C_DIM, "F11 OR ALT+ENTER SWITCHES IN THE GAME");
+            y += 24;
+        }
 
         /* scanlines */
         text(ren, L, y + 4, C_TEXT, "SCANLINES");
@@ -653,7 +660,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         text(ren, V + 84, y + 4, C_TEXT, "TRAINER");
         b = button(ren, V + 148, y, 64, s->trainer ? "ON" : "OFF", hv(V + 148, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) s->trainer = !s->trainer;
-        text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
+        if (!touch_present()) text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
         y += 24;
 
         /* bug fixes */
@@ -663,21 +670,32 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         text(ren, V + 76, y + 4, C_DIM, s->bugfixes ? "THE ORIGINAL'S BUGS ARE FIXED" : "PLAYS AS THE ORIGINAL DID");
         y += 24;
 
+        /* touch screens */
+        if (touch_present()) {
+            text(ren, L, y + 4, C_TEXT, "TOUCH");
+            b = button(ren, V, y, 96, s->touch ? "TRACKPAD" : "TAP", hv(V, y, 96, 16, mx, my), 1);
+            if (CLICKED(b)) s->touch = !s->touch;
+            text(ren, V + 108, y + 4, C_DIM, "2=RIGHT CLICK 3=MODE 4=KEYBOARD");
+            y += 24;
+        }
+
         /* replay */
-        text(ren, L, y + 4, C_TEXT, "REPLAY A SESSION LOG");
-        Box rfield = {V, y, 236, 16};
-        frame(ren, rfield, editing == 2 ? C_HOVER : C_PANEL, editing == 2 ? C_GOLD : C_DIM);
-        path_text(ren, V + 4, y + 4, 28, s->replay[0] || editing == 2 ? s->replay : "(NONE)",
-                  s->replay[0] ? C_VALUE : C_DIM, editing == 2);
-        b = button(ren, V + 244, y, 64, "CHOOSE", hv(V + 244, y, 64, 16, mx, my), 1);
-        if (CLICKED(b)) pick(win, 2, base);     /* the logs are next to the program */
-        b = button(ren, V + 316, y, 56, "CLEAR", hv(V + 316, y, 56, 16, mx, my), s->replay[0] != 0);
-        if (CLICKED(b)) s->replay[0] = 0;
-        if (click == 1 && inside(rfield, mx, my)) { editing = 2; SDL_StartTextInput(win); }
-        else if (click == 1 && editing == 2 && !inside(rfield, mx, my)) { editing = 0; SDL_StopTextInput(win); }
-        if (!replay_ok) text(ren, V, y + 22, C_BAD, "THIS FILE DOES NOT EXIST");
-        else if (s->replay[0]) text(ren, V, y + 22, C_DIM, "SKIPS THE INTRO, THEN YOU PLAY ON");
-        y += 40;
+        if (!touch_present()) {
+            text(ren, L, y + 4, C_TEXT, "REPLAY A SESSION LOG");
+            Box rfield = {V, y, 236, 16};
+            frame(ren, rfield, editing == 2 ? C_HOVER : C_PANEL, editing == 2 ? C_GOLD : C_DIM);
+            path_text(ren, V + 4, y + 4, 28, s->replay[0] || editing == 2 ? s->replay : "(NONE)",
+                      s->replay[0] ? C_VALUE : C_DIM, editing == 2);
+            b = button(ren, V + 244, y, 64, "CHOOSE", hv(V + 244, y, 64, 16, mx, my), 1);
+            if (CLICKED(b)) pick(win, 2, base);     /* the logs are next to the program */
+            b = button(ren, V + 316, y, 56, "CLEAR", hv(V + 316, y, 56, 16, mx, my), s->replay[0] != 0);
+            if (CLICKED(b)) s->replay[0] = 0;
+            if (click == 1 && inside(rfield, mx, my)) { editing = 2; SDL_StartTextInput(win); }
+            else if (click == 1 && editing == 2 && !inside(rfield, mx, my)) { editing = 0; SDL_StopTextInput(win); }
+            if (!replay_ok) text(ren, V, y + 22, C_BAD, "THIS FILE DOES NOT EXIST");
+            else if (s->replay[0]) text(ren, V, y + 22, C_DIM, "SKIPS THE INTRO, THEN YOU PLAY ON");
+            y += 40;
+        }
 
         if (note[0]) text(ren, (LW - (float)strlen(note) * CH) / 2, y, note_rgb, note);
 

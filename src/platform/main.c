@@ -17,6 +17,7 @@
  *                  (F8 switches the trainer on and off)
  *   --fix-bugs     fix the original game's bugs (see README; off = plays as the original did;
  *                  ignored when a session log is replayed)
+ *   --trackpad     touch screens: drag moves a pointer (default: a tap clicks where touched)
  *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
@@ -48,6 +49,7 @@
 #include "ending.h"
 #include "intro.h"
 #include "launcher.h"
+#include "touch.h"
 #include "os4_dialog.h"
 #include "build_id.h"           /* SUP_VERSION, SUP_BUILD_ID, SUP_BUILD_DATE (cmake/build_id.cmake) */
 
@@ -162,6 +164,8 @@ typedef struct App {
     int scanlines;              /* 1: CRT-style scanlines (F10) */
     int trainer;                /* 1: the cheat keys work (F8) */
     int peace;                  /* 1: trainer peace is on (F9), for the window title */
+    const char *toast;          /* a short message drawn over the picture (touch mode changes) */
+    Uint64 toast_until;
 } App;
 
 /* The window title says when the trainer, and peace, are on. */
@@ -176,6 +180,10 @@ static void app_title(App *a)
 static void app_game_mode(App *a, int scale, int fullscreen)
 {
     if (scale < 1) scale = 1;
+    if (touch_present()) {              /* a phone: always full screen, the system sizes the window */
+        SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+        return;
+    }
     SDL_SetWindowSize(a->win, 320 * scale, 200 * scale);
     SDL_SetWindowPosition(a->win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
@@ -189,6 +197,12 @@ static int app_open(App *a, int scale, int fullscreen)
     SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");
     SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL, "1");
     SDL_WindowFlags fl = SDL_WINDOW_RESIZABLE | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0);
+#ifdef SDL_PLATFORM_IOS
+    /* a phone: landscape only, the whole screen, sound even with the silent switch on */
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
+    fl |= SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+#endif
     if (!SDL_CreateWindowAndRenderer("Supremacy", 320 * scale, 200 * scale, fl, &a->win, &a->ren)) {
         fprintf(stderr, "window: %s\n", SDL_GetError());
         return -1;
@@ -264,6 +278,15 @@ static void app_present(App *a, const uint32_t *px)
     SDL_RenderClear(a->ren);
     SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
     if (a->scanlines) draw_scanlines(a);
+    const char *t = touch_take_toast();
+    if (t) { a->toast = t; a->toast_until = SDL_GetTicks() + 1500; }
+    if (a->toast && SDL_GetTicks() < a->toast_until) {
+        SDL_SetRenderDrawColor(a->ren, 0, 0, 0, 255);
+        SDL_FRect bg = {2, 2, 8.0f * (float)SDL_strlen(a->toast) + 4, 12};
+        SDL_RenderFillRect(a->ren, &bg);
+        SDL_SetRenderDrawColor(a->ren, 255, 255, 255, 255);
+        SDL_RenderDebugText(a->ren, 4, 4, a->toast);
+    }
     SDL_RenderPresent(a->ren);
 }
 
@@ -307,7 +330,7 @@ static int run_pictures(App *a, const GameData *gd)
     picture_pixels(gd, cur, px);
     while (running) {
         SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
+        while (touch_poll_event(&ev)) {
             if (app_event(a, &ev)) continue;
             if (ev.type == SDL_EVENT_QUIT) running = 0;
             if (ev.type == SDL_EVENT_KEY_DOWN) {
@@ -535,11 +558,11 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
     uint64_t next = SDL_GetTicksNS();
     const uint64_t step = (uint64_t)(1e9 / (speed > 0 ? speed : 47.0));
     SDL_HideCursor();
-    SDL_StartTextInput(a->win);
+    if (!touch_present()) SDL_StartTextInput(a->win);     /* a phone: the keyboard only on a four-finger tap */
     int latch_l = 0, latch_r = 0;    /* a press not yet seen by a game pass (a click quicker than a frame) */
     while (running) {
         SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
+        while (touch_poll_event(&ev)) {
             if (app_event(a, &ev)) continue;
             if (ev.type == SDL_EVENT_QUIT) running = 0;
             if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
@@ -574,10 +597,14 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
                 }
             }
         }
+        if (touch_take_keyboard()) {
+            if (SDL_TextInputActive(a->win)) SDL_StopTextInput(a->win);
+            else SDL_StartTextInput(a->win);
+        }
         if (!a->trainer && g->peace) { cheat_peace(g, 0); a->peace = 0; app_title(a); }   /* F8 off */
         /* mouse in the 320x200 picture ($AB4: 0-317, $ABA: 1-197) */
         float wx, wy, lx, ly;
-        SDL_MouseButtonFlags bt = SDL_GetMouseState(&wx, &wy);
+        SDL_MouseButtonFlags bt = touch_mouse_state(&wx, &wy);
         SDL_RenderCoordinatesFromWindow(a->ren, wx, wy, &lx, &ly);
         Mouse ms;
         ms.x = (int16_t)SDL_clamp((int)lx, 0, 317);
@@ -699,7 +726,7 @@ static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
     SDL_HideCursor();
     while (running) {
         SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
+        while (touch_poll_event(&ev)) {
             if (app_event(a, &ev)) continue;
             if (ev.type == SDL_EVENT_QUIT) running = 0;
             if (ev.type == SDL_EVENT_KEY_DOWN && !ev.key.repeat) keys++;
@@ -708,7 +735,7 @@ static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
                 latch |= ev.button.button == SDL_BUTTON_LEFT ? 1 : ev.button.button == SDL_BUTTON_RIGHT ? 2 : 0;
         }
         float wx, wy, lx, ly;
-        SDL_MouseButtonFlags bt = SDL_GetMouseState(&wx, &wy);
+        SDL_MouseButtonFlags bt = touch_mouse_state(&wx, &wy);
         SDL_RenderCoordinatesFromWindow(a->ren, wx, wy, &lx, &ly);
         int held = ((bt & SDL_BUTTON_LMASK) ? 1 : 0) | ((bt & SDL_BUTTON_RMASK) ? 2 : 0);
         uint64_t now = SDL_GetTicksNS();
@@ -783,7 +810,7 @@ static int run_ending(App *a, const char *dir, int which)
     SDL_HideCursor();
     while (running) {
         SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
+        while (touch_poll_event(&ev)) {
             if (app_event(a, &ev)) continue;
             if (ev.type == SDL_EVENT_QUIT) running = 0;
             if (e.done && (ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN))
@@ -828,6 +855,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
         else if (!strcmp(argv[i], "--trainer")) trainer = 1;
         else if (!strcmp(argv[i], "--fix-bugs")) opt_fix_bugs = 1;
+        else if (!strcmp(argv[i], "--trackpad")) touch_set_mode(1);
         else if (!strcmp(argv[i], "--log") && i + 1 < argc) log_path = argv[++i];
         else if (!strcmp(argv[i], "--replay") && i + 1 < argc) replay_path = argv[++i];
         else if (!strcmp(argv[i], "--speed") && i + 1 < argc) speed = SDL_atof(argv[++i]);
@@ -864,6 +892,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
+    touch_init();
     App a = {0};
     static Settings set;
     int launched = argc <= 1, load_slot = -1;        /* no arguments; 0 = started from Workbench */
@@ -896,6 +925,7 @@ int main(int argc, char **argv)
         scanlines = set.scanlines;
         trainer = set.trainer;
         opt_fix_bugs = set.bugfixes;
+        touch_set_mode(set.touch);
         if (set.replay[0]) replay_path = set.replay;
         if (lr == 2) { load_slot = set.load_slot; intro = 0; }   /* LOAD SAVED GAME */
         app_game_mode(&a, scale, fullscreen);

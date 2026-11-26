@@ -375,6 +375,41 @@ it no longer shows the game data folder at all. Saves and settings stay in
 `~/Library/Application Support/Supremacy/`. **This app contains the game's
 copyrighted data: keep it for your own use, and never share or publish it.**
 
+### iPhone and iPad
+
+The game also builds as an iOS app, with touch controls. You need a Mac with
+Xcode (from the App Store) and `brew install cmake`. Your game files go inside
+the app, so it needs nothing else on the phone.
+
+```sh
+sh tools/make_ios_project.sh --with-data SupremacyData --id com.yourname.supermac
+open build-ios/Supremacy.xcodeproj
+```
+
+In Xcode: choose your iPhone at the top, pick your Team under *Signing &
+Capabilities* for the `supremacy` target (a free Apple ID works, see below)
+and press Run. The first build downloads and compiles SDL 3.
+
+- **Free Apple ID:** the app runs for 7 days, then Xcode must install it
+  again. The bundle identifier (`--id`) has to be one no one else uses.
+- **Paid developer account:** the app lasts a year, and you can use TestFlight.
+- The app contains the game's copyrighted data: keep it for your own use, and
+  never publish it or send it to TestFlight testers other than yourself.
+
+Touch controls (the launcher's **Touch** setting picks the starting mode):
+
+| Gesture | Tap mode (default) | Trackpad mode |
+|---|---|---|
+| One finger | The pointer jumps to the finger; touching clicks, dragging drags | Drag moves the pointer; a tap clicks where the pointer is; hold a finger still for a moment to press and hold the button |
+| Two-finger tap | Right click | Right click |
+| Three-finger tap | Switch between the two modes | Switch between the two modes |
+| Four-finger tap | Show or hide the keyboard (for typed names) | Show or hide the keyboard |
+
+The picture is shown in landscape, in whole-number steps, with black bars at
+the sides. The trainer's cheat keys (F5-F9) need a keyboard connected to the
+phone. The iOS version has not been tested on a real phone yet: if something
+does not work, please report it.
+
 ### AmigaOS 4 (cross-compiled)
 
 The AmigaOS 4 version is built on Windows, macOS or Linux with a

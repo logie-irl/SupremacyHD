@@ -19,6 +19,7 @@ typedef struct Settings {
     int  fullscreen;
     int  trainer;           /* 1: the cheat keys F5-F7 work (F8 switches in the game) */
     int  bundled;           /* 1: the game files are inside the app, so no folder is asked for (not saved) */
+    int  touch;             /* touch screens: 0 a tap clicks where touched, 1 a trackpad (three-finger tap switches) */
     int  bugfixes;          /* 1: the original's bugs are fixed (see README, "Bug fixes") */
     int  scanlines;         /* 1: darken the lower part of every picture line (F10 in the game) */
     char replay[1024];      /* a session log to replay, or "" (not remembered) */
