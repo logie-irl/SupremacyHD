@@ -4,20 +4,39 @@
 #   brew install cmake sdl3
 #   cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 #   sh tools/make_macos_app.sh            # makes ./Supremacy.app
+#   sh tools/make_macos_app.sh --with-data ~/SupremacyData
+#                                         # the same, with your game files inside the app
 #
 # The app carries its own copy of SDL3 and is ad-hoc signed, which is enough to run
 # it on the Mac that built it. Settings, saved games and the game data live in
 # ~/Library/Application Support/Supremacy/ (the first launch opens the launcher:
 # EXTRACT your IPF disks or WHDLoad archive there). The app contains none of the
-# game's data; do not redistribute it with your own game files.
+# game's data unless you pass --with-data DIR (your extracted SupremacyData
+# folder, 12 files). That copy is for you only: an app with the game's files
+# inside must never be shared or published.
 set -eu
 
+DATA=""
+POS=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --with-data) [ $# -ge 2 ] || { echo "--with-data needs a folder" >&2; exit 1; }; DATA=$2; shift 2 ;;
+    *) POS="$POS $1"; shift ;;
+  esac
+done
+set -- $POS
 BUILD=${1:-build}
 APP=${2:-Supremacy.app}
 BIN="$BUILD/supremacy"
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 [ -x "$BIN" ] || { echo "$BIN not found: build the game first (see the top of this file)" >&2; exit 1; }
+
+if [ -n "$DATA" ]; then
+  for f in GAM1 GAM2 INT1 INT2 Main DIEM WINM; do
+    [ -f "$DATA/$f" ] || { echo "$DATA does not look like the game data folder (no $f)" >&2; exit 1; }
+  done
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
@@ -51,6 +70,12 @@ for s in 16 32 128 256 512; do
   sips -z $((s * 2)) $((s * 2)) "$SRC" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Supremacy.icns" || echo "icon skipped"
+
+if [ -n "$DATA" ]; then
+  mkdir -p "$APP/Contents/Resources/SupremacyData"
+  cp "$DATA"/* "$APP/Contents/Resources/SupremacyData/"
+  echo "Game data bundled: this app is for your own use only, do not share it."
+fi
 
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>

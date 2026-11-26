@@ -836,6 +836,15 @@ int main(int argc, char **argv)
         else data_dir = argv[i];
     }
     const char *base = SDL_GetBasePath();
+    static char bundled[1100];       /* SupremacyData inside the app bundle (make_macos_app.sh --with-data) */
+    bundled[0] = 0;
+    {
+        char probe[1200];
+        SDL_PathInfo pi;
+        SDL_snprintf(probe, sizeof probe, "%sSupremacyData/GAM1", base ? base : "");
+        if (base && SDL_GetPathInfo(probe, &pi) && pi.type == SDL_PATHTYPE_FILE)
+            SDL_snprintf(bundled, sizeof bundled, "%sSupremacyData", base);
+    }
 #ifdef __APPLE__
     /* Inside a signed Supremacy.app the base path is in the bundle, which must stay
      * read-only: keep settings, saved games and the game data under
@@ -866,6 +875,12 @@ int main(int argc, char **argv)
         SDL_snprintf(cfg, sizeof cfg, "%ssupremacy.cfg", base ? base : "");
         settings_defaults(&set, base);
         settings_load(&set, cfg);
+        if (bundled[0]) {                            /* game files inside the app: use them unless a folder with files was chosen */
+            char probe[1200];
+            SDL_PathInfo pi;
+            SDL_snprintf(probe, sizeof probe, "%s/GAM1", set.data);
+            if (!SDL_GetPathInfo(probe, &pi)) SDL_strlcpy(set.data, bundled, sizeof set.data);
+        }
         if (app_open(&a, 2, 0) != 0) return 1;
         int lr = launcher_run(a.win, a.ren, &set, base);
         if (!lr) {

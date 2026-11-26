@@ -359,6 +359,19 @@ sh tools/make_macos_app.sh         # optional: makes Supremacy.app
 settings, saved games and `SupremacyData` live in
 `~/Library/Application Support/Supremacy/`.
 
+To make an app with your game files inside it, so it runs without
+extracting anything, point the script at your extracted `SupremacyData` folder
+(the 12 game files):
+
+```sh
+sh tools/make_macos_app.sh --with-data ~/SupremacyData
+```
+
+The files are copied into the app and the launcher uses them straight away
+(you can still choose another folder with Browse). Saves and settings stay in
+`~/Library/Application Support/Supremacy/`. **This app contains the game's
+copyrighted data: keep it for your own use, and never share or publish it.**
+
 ### AmigaOS 4 (cross-compiled)
 
 The AmigaOS 4 version is built on Windows, macOS or Linux with a
