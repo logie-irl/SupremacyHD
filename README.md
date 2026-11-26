@@ -364,8 +364,11 @@ extracting anything, point the script at your extracted `SupremacyData` folder
 (the 12 game files):
 
 ```sh
-sh tools/make_macos_app.sh --with-data ~/SupremacyData
+sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app
 ```
+
+That makes one self-contained `SuperMac.app` (the name is whatever you give
+as the last argument): drag it to Applications and it needs nothing else.
 
 The files are copied into the app and the launcher uses them straight away
 (you can still choose another folder with Browse). Saves and settings stay in

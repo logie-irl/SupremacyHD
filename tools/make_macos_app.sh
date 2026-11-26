@@ -4,8 +4,9 @@
 #   brew install cmake sdl3
 #   cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 #   sh tools/make_macos_app.sh            # makes ./Supremacy.app
-#   sh tools/make_macos_app.sh --with-data ~/SupremacyData
-#                                         # the same, with your game files inside the app
+#   sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app
+#                                         # one self-contained SuperMac.app with your game
+#                                         # files inside: drag it to Applications
 #
 # The app carries its own copy of SDL3 and is ad-hoc signed, which is enough to run
 # it on the Mac that built it. Settings, saved games and the game data live in
@@ -96,6 +97,13 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </dict>
 </plist>
 EOF
+
+# The app's name follows its file name (SuperMac.app is called "SuperMac").
+NAME=$(basename "$APP" .app)
+sed -e "s|<key>CFBundleName</key><string>Supremacy</string>|<key>CFBundleName</key><string>$NAME</string>|" \
+    -e "s|<key>CFBundleDisplayName</key><string>Supremacy</string>|<key>CFBundleDisplayName</key><string>$NAME</string>|" \
+    "$APP/Contents/Info.plist" > "$APP/Contents/Info.plist.new"
+mv "$APP/Contents/Info.plist.new" "$APP/Contents/Info.plist"
 
 # Ad-hoc signature: required for arm64 code to run.
 codesign --force --deep --sign - "$APP"
