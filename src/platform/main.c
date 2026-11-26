@@ -875,11 +875,9 @@ int main(int argc, char **argv)
         SDL_snprintf(cfg, sizeof cfg, "%ssupremacy.cfg", base ? base : "");
         settings_defaults(&set, base);
         settings_load(&set, cfg);
-        if (bundled[0]) {                            /* game files inside the app: use them unless a folder with files was chosen */
-            char probe[1200];
-            SDL_PathInfo pi;
-            SDL_snprintf(probe, sizeof probe, "%s/GAM1", set.data);
-            if (!SDL_GetPathInfo(probe, &pi)) SDL_strlcpy(set.data, bundled, sizeof set.data);
+        if (bundled[0]) {                            /* game files inside the app: always use them */
+            SDL_strlcpy(set.data, bundled, sizeof set.data);
+            set.bundled = 1;
         }
         if (app_open(&a, 2, 0) != 0) return 1;
         int lr = launcher_run(a.win, a.ren, &set, base);

@@ -565,30 +565,32 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
 #define HOVER(bx) inside((bx), mx, my)
 #define CLICKED(bx) (click == 1 && inside((bx), mx, my))
 
-        /* the game data folder */
-        text(ren, L, y + 4, C_TEXT, "GAME DATA FOLDER");
-        Box field = {V, y, 300, 16};
-        frame(ren, field, editing == 1 ? C_HOVER : C_PANEL, editing == 1 ? C_GOLD : C_DIM);
-        path_text(ren, V + 4, y + 4, 36, s->data, C_VALUE, editing == 1);
-        b = button(ren, V + 308, y, 64, "BROWSE", hv(V + 308, y, 64, 16, mx, my), 1);
-        if (CLICKED(b)) pick(win, 1, s->data);
-        if (click == 1 && inside(field, mx, my)) { editing = 1; SDL_StartTextInput(win); }
-        else if (click == 1 && editing == 1) { editing = 0; SDL_StopTextInput(win); }
-        if (is_arc) {                   /* an archive's path typed in the field */
-            text(ren, V, y + 22, C_TEXT, "THIS IS AN ARCHIVE:");
-            b = button(ren, V + 168, y + 18, 204, "EXTRACT THE GAME FILES", hv(V + 168, y + 18, 204, 16, mx, my), 1);
-            if (CLICKED(b)) extract_from = 2;
-        } else if (!ok) {
-            text(ren, V, y + 22, C_BAD, why);
-            y += 20;
-            text(ren, L, y + 22, C_DIM, "NO GAME FILES?");
-            b = button(ren, V, y + 18, 372, "EXTRACT FROM WHDLOAD .LHA/.ZIP OR .IPF DISKS",
-                       hv(V, y + 18, 372, 16, mx, my), 1);
-            if (CLICKED(b)) pick(win, 3, base);  /* the program's folder; both disks at once */
-        } else {
-            text(ren, V, y + 22, C_OK, why);
+        /* the game data folder (not shown when the game files are inside the app) */
+        if (!s->bundled) {
+            text(ren, L, y + 4, C_TEXT, "GAME DATA FOLDER");
+            Box field = {V, y, 300, 16};
+            frame(ren, field, editing == 1 ? C_HOVER : C_PANEL, editing == 1 ? C_GOLD : C_DIM);
+            path_text(ren, V + 4, y + 4, 36, s->data, C_VALUE, editing == 1);
+            b = button(ren, V + 308, y, 64, "BROWSE", hv(V + 308, y, 64, 16, mx, my), 1);
+            if (CLICKED(b)) pick(win, 1, s->data);
+            if (click == 1 && inside(field, mx, my)) { editing = 1; SDL_StartTextInput(win); }
+            else if (click == 1 && editing == 1) { editing = 0; SDL_StopTextInput(win); }
+            if (is_arc) {                   /* an archive's path typed in the field */
+                text(ren, V, y + 22, C_TEXT, "THIS IS AN ARCHIVE:");
+                b = button(ren, V + 168, y + 18, 204, "EXTRACT THE GAME FILES", hv(V + 168, y + 18, 204, 16, mx, my), 1);
+                if (CLICKED(b)) extract_from = 2;
+            } else if (!ok) {
+                text(ren, V, y + 22, C_BAD, why);
+                y += 20;
+                text(ren, L, y + 22, C_DIM, "NO GAME FILES?");
+                b = button(ren, V, y + 18, 372, "EXTRACT FROM WHDLOAD .LHA/.ZIP OR .IPF DISKS",
+                           hv(V, y + 18, 372, 16, mx, my), 1);
+                if (CLICKED(b)) pick(win, 3, base);  /* the program's folder; both disks at once */
+            } else {
+                text(ren, V, y + 22, C_OK, why);
+            }
+            y += 40;
         }
-        y += 40;
 
         /* intro */
         text(ren, L, y + 4, C_TEXT, "INTRO");
