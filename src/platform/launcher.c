@@ -353,12 +353,18 @@ static void make_backdrop(SDL_Renderer *ren, const char *data)
 }
 
 /* a wide button like PLAY NEW GAME, text at 2x */
+/* The big buttons at the bottom (PLAY NEW GAME, LOAD SAVED GAME, GO BACK):
+ * three quarters of the old full-width size, centred. */
+#define BIG_W ((LW - 80) * 0.75f)
+#define BIG_H 27.0f
+static Box big_box(float y) { return (Box){(LW - BIG_W) / 2, y, BIG_W, BIG_H}; }
+
 static Box big_button(SDL_Renderer *r, float y, const char *label, int hover, int on)
 {
-    Box b = {40, y, LW - 80, 36};
+    Box b = big_box(y);
     frame(r, b, on && hover ? C_HOVER : C_PANEL, on ? C_GOLD : C_DIM);
-    SDL_SetRenderScale(r, 2, 2);
-    text(r, (LW / 2.0f - (float)strlen(label) * CH) / 2, (y + 10) / 2.0f, on ? C_VALUE : C_DIM, label);
+    SDL_SetRenderScale(r, 1.5f, 1.5f);
+    text(r, (LW / 2.0f - (float)strlen(label) * CH * 0.75f) / 1.5f, (y + 8) / 1.5f, on ? C_VALUE : C_DIM, label);
     SDL_SetRenderScale(r, 1, 1);
     return b;
 }
@@ -543,7 +549,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
                 }
                 if (on && click == 1 && inside(sb, mx, my)) { s->load_slot = k; result = 2; }
             }
-            Box back = big_button(ren, LH - 62, "GO BACK", inside((Box){40, LH - 62, LW - 80, 36}, mx, my), 1);
+            Box back = big_button(ren, LH - 53, "GO BACK", inside(big_box(LH - 53), mx, my), 1);
             if (click == 1 && inside(back, mx, my)) page = 0;
             if (!nsaves) page = 0;
             {                           /* tests: the window's picture (SUP_LAUNCHER_SHOT) */
@@ -733,10 +739,10 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         /* LOAD SAVED GAME (only when there are saves) and PLAY NEW GAME */
         int can = ok && replay_ok;
         if (nsaves) {
-            Box load = big_button(ren, LH - 98, "LOAD SAVED GAME", HOVER(((Box){40, LH - 98, LW - 80, 36})), ok);
+            Box load = big_button(ren, LH - 80, "LOAD SAVED GAME", HOVER(big_box(LH - 80)), ok);
             if (ok && click == 1 && inside(load, mx, my)) page = 1;
         }
-        Box play = big_button(ren, LH - 54, "PLAY NEW GAME", HOVER(((Box){40, LH - 54, LW - 80, 36})), can);
+        Box play = big_button(ren, LH - 45, "PLAY NEW GAME", HOVER(big_box(LH - 45)), can);
         if (can && ((click == 1 && inside(play, mx, my)) || click == 2)) result = 1;
         else if (!can && click == 2) {
             SDL_snprintf(note, sizeof note, "SET THE GAME DATA FOLDER FIRST");
