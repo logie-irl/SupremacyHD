@@ -670,10 +670,17 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         }
 
         /* hi-res pictures */
+#ifdef SUP_HD
+        text(ren, L, y + 4, C_TEXT, "HD PICTURES");
+        b = button(ren, V, y, 64, s->hires ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
+        if (CLICKED(b)) s->hires = !s->hires;
+        text(ren, V + 76, y + 4, C_DIM, s->hires ? "SMOOTH HI-RES ARTWORK" : "THE ORIGINAL PIXELS");
+#else
         text(ren, L, y + 4, C_TEXT, "HI-RES PICTURES");
         b = button(ren, V, y, 64, s->hires ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) s->hires = !s->hires;
         text(ren, V + 76, y + 4, C_DIM, "USED WHEN A HIRES FOLDER IS THERE");
+#endif
         y += 24;
 
         /* scanlines */

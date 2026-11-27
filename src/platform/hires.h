@@ -18,6 +18,11 @@
 int hires_load(SDL_Renderer *ren, const char *dir_a, const char *dir_b);
 void hires_free(void);
 
+/* Built-in upscaler: pictures with no pack file are made from the originals
+ * (pixel-art edge smoothing, x8, then softened, scaled to 1280x800 and sharpened)
+ * the first time they are shown. */
+void hires_builtin(SDL_Renderer *ren, const GameData *gd);
+
 /* The hi-res texture for the picture at original address `addr`, or NULL. */
 SDL_Texture *hires_find(uint32_t addr);
 

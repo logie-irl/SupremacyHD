@@ -144,6 +144,6 @@ if(TARGET supremacy)
   add_dependencies(supremacy build_id)
   target_include_directories(supremacy PRIVATE ${CMAKE_BINARY_DIR}/gen)
   if(SUP_HD)
-    target_compile_definitions(supremacy PRIVATE SUP_HD=1)
+    target_compile_definitions(supremacy PRIVATE SUP_HD=1)   # main.c and launcher.c
   endif()
 endif()

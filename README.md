@@ -422,7 +422,7 @@ SupremacyHD is the same game as its own app (its own settings and saved games in
 `fleet.png`, `troops.png`, `cargo.png`, `surface.png`, `combat.png` and `title.png` (any size;
 1280x800 or larger, 8:5 shape). Wherever the screen still shows the backdrop, the hi-res
 picture is drawn; the text, icons, planet picture and pointer the game draws on top stay as
-the game draws them. Without a pack it plays like normal, so a pack is optional.
+the game draws them. With no pack, SupremacyHD upscales the pictures itself when the game starts (pixel-art edge smoothing, x8, softened and sharpened to 1280x800), so it is HD out of the box; a pack you make replaces the built-in pictures. The launcher's **HD PICTURES** switch turns it on and off.
 
     sh tools/upscale_pictures.sh            # writes the originals to HiRes-original/ and,
                                             # with realesrgan-ncnn-vulkan installed, HiRes/

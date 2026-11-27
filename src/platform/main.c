@@ -1120,6 +1120,10 @@ int main(int argc, char **argv)
         SDL_snprintf(d2, sizeof d2, "%sHiRes", base ? base : "");
         SDL_snprintf(d3, sizeof d3, "%s/HiRes", data_dir);
         a.hires_loaded = hires_load(a.ren, d1, d2) > 0 || hires_load(a.ren, d3, NULL) > 0;
+#ifdef SUP_HD
+        hires_builtin(a.ren, &gd);          /* SupremacyHD: pictures with no pack file are upscaled here */
+        a.hires_loaded = 1;
+#endif
         if (a.hires_loaded) app_apply_display(&a);
     }
     a.scanlines = scanlines;
