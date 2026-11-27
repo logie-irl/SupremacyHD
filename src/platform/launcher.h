@@ -10,6 +10,16 @@
 
 #include <SDL3/SDL.h>
 
+/* The window title and settings folder name: the separate SupremacyHD app
+ * (cmake -DSUP_HD=ON) or the plain game. */
+#ifdef SUP_HD
+#define APP_TITLE "SupremacyHD"
+#define PREF_APP "SupremacyHD"
+#else
+#define APP_TITLE "Supremacy"
+#define PREF_APP "Supremacy"
+#endif
+
 typedef struct Settings {
     char data[1024];        /* the SupremacyData folder */
     int  intro;             /* 1: start with the intro (pick the opponent there) */

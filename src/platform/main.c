@@ -51,14 +51,6 @@
 #include "hires.h"
 #include "build_id.h"           /* SUP_VERSION, SUP_BUILD_ID, SUP_BUILD_DATE (cmake/build_id.cmake) */
 
-#ifdef SUP_HD                           /* the separate SupremacyHD app (cmake -DSUP_HD=ON) */
-#define APP_TITLE "Supremacy HD"
-#define PREF_APP "SupremacyHD"
-#else
-#define APP_TITLE "Supremacy"
-#define PREF_APP "Supremacy"
-#endif
-
 /* The version banner (names the commit built). */
 __attribute__((used)) static const char sup_banner[] =
     "$VER: Supremacy " SUP_VERSION " (" SUP_BUILD_DATE ") build " SUP_BUILD_ID;

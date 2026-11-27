@@ -399,7 +399,7 @@ static void do_extract(Settings *s, const char *base, const char *archives, char
 int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *base)
 {
     if (!dlg_lock) dlg_lock = SDL_CreateMutex();
-    SDL_SetWindowTitle(win, "Supremacy - options");
+    SDL_SetWindowTitle(win, APP_TITLE);
     {                               /* the remembered size, shrunk to fit the screen */
         int w = s->win_w > 0 ? s->win_w : 2 * LW, h = s->win_h > 0 ? s->win_h : 2 * LH;
         SDL_Rect ub;
@@ -758,6 +758,6 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
     if (editing) SDL_StopTextInput(win);
     if (!(SDL_GetWindowFlags(win) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED)))
         SDL_GetWindowSize(win, &s->win_w, &s->win_h);   /* remembered for next time */
-    SDL_SetWindowTitle(win, "Supremacy");
+    SDL_SetWindowTitle(win, APP_TITLE);
     return result;
 }
