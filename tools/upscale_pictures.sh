@@ -17,10 +17,9 @@ set -eu
 DATA=${1:-SupremacyData}
 OUT=${2:-HiRes}
 SRC=${OUT}-original
-BIN=supremacy
-[ -x build-hd/supremacy ] && BIN=build-hd/supremacy
-[ -x "$BIN" ] || [ -x build/supremacy ] && BIN=${BIN:-build/supremacy}
-[ -x "$BIN" ] || BIN=build/supremacy
+BIN=""
+for c in build-hd/supremacy build/supremacy; do [ -x "$c" ] && { BIN=$c; break; }; done
+[ -n "$BIN" ] || { echo "build the game first (cmake -S . -B build && cmake --build build)" >&2; exit 1; }
 "$BIN" "$DATA" --export-pictures "$SRC"
 UP=$(command -v realesrgan-ncnn-vulkan || true)
 if [ -z "$UP" ]; then
