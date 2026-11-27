@@ -20,6 +20,7 @@
  *   --scanlines    CRT-style scanlines (F10 switches at any time; needs a window 2x or larger)
  *   --log FILE     the session log (default supremacy.log next to the program)
  *   --replay FILE  play a session log again (skips the intro), then play on
+ *   --credits      only play the intro's credits, then quit
  *   --ending N     only play an end sequence: 0-3 victory over that opponent, -1 defeat
  *
  * The game core and screens draw into a copy of the original's screen
@@ -71,6 +72,8 @@ static EndSound music;                 /* intro / end-sequence music (endmusic.c
 static int music_on;
 static SDL_Mutex *sound_lock;
 
+static int sound_ready;              /* the game's sounds are loaded (not yet in the launcher) */
+
 static void SDLCALL audio_feed(void *user, SDL_AudioStream *st, int additional, int total)
 {
     int16_t buf[2048];
@@ -81,7 +84,8 @@ static void SDLCALL audio_feed(void *user, SDL_AudioStream *st, int additional, 
         if (frames <= 0) break;
         SDL_LockMutex(sound_lock);
         if (music_on) endsnd_render(&music, buf, frames);
-        else snd_render(&sound, buf, frames);
+        else if (sound_ready) snd_render(&sound, buf, frames);
+        else SDL_memset(buf, 0, (size_t)frames * 4);
         SDL_UnlockMutex(sound_lock);
         SDL_PutAudioStreamData(st, buf, frames * 4);
         additional -= frames * 4;
@@ -813,7 +817,7 @@ static void music_stop(void)
 
 /* Returns 1 with the opponent and seed picked (CHALLENGE), 0 to quit, -1 if
  * the intro files are missing. */
-static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
+static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed, int credits)
 {
     static uint32_t px[320 * 200];
     size_t l1 = 0, l2 = 0;
@@ -822,6 +826,7 @@ static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
     int r = (f1 && f2) ? intro_init(&in, f1, l1, f2, l2) : -1;
     if (r) { SDL_free(f1); SDL_free(f2); return -1; }
     SDL_free(f1);
+    int start_music = credits ? intro_to_credits(&in) : 0;   /* credits only: straight to them */
     const char *aq = SDL_getenv("SUP_AUTOQUIT_FRAMES");
     int limit = aq ? SDL_atoi(aq) : 0, frames = 0, running = 1, keys = 0, result = 0, latch = 0;
     const uint64_t step = 20000000ull;               /* PAL frames */
@@ -844,10 +849,13 @@ static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
         uint64_t now = SDL_GetTicksNS();
         for (int n = 0; now >= next && n < 4 && running; n++) {
             next += step;
-            intro_frame(&in, (int)lx, (int)ly, held | latch, keys > 0);
+            if (credits && frames < 25) intro_frame(&in, (int)lx, (int)ly, 0, 0);   /* the launcher's click */
+            else intro_frame(&in, (int)lx, (int)ly, held | latch, keys > 0);
             latch = 0;
             frames++;
-            if (in.music_init) {                     /* jsr $68000, d7 = 0 */
+            if (credits && intro_credits_done(&in)) { result = 1; running = 0; break; }
+            if (in.music_init || start_music) {
+                start_music = 0;                     /* jsr $68000, d7 = 0 */
                 SDL_LockMutex(sound_lock);
                 if (!music_on && endsnd_init(&music, f2, l2, ENDMUS_INTRO, AUDIO_RATE) == 0)
                     music_on = 1;
@@ -875,6 +883,20 @@ static int run_intro(App *a, const char *dir, int *opponent, uint32_t *seed)
     intro_free(&in);
     SDL_ShowCursor();
     return result;
+}
+
+/* The launcher's CREDITS: the intro's credits pages over the starfield, with
+ * its music; a click or a key ends them. */
+static void run_credits(App *a, const char *dir)
+{
+    if (!sound_lock) sound_lock = SDL_CreateMutex();
+    SDL_AudioSpec spec = {SDL_AUDIO_S16, 2, AUDIO_RATE};
+    SDL_AudioStream *audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_feed, NULL);
+    if (audio) SDL_ResumeAudioStreamDevice(audio);
+    int opp = 0;
+    uint32_t seed = 0;
+    if (run_intro(a, dir, &opp, &seed, 1) < 0) show_error(a->win, "The intro files (INT1, INT2) are missing.");
+    if (audio) SDL_DestroyAudioStream(audio);
 }
 
 /* ---- the end sequences ---- */
@@ -948,6 +970,7 @@ int main(int argc, char **argv)
     int opponent = 0, pictures = 0, ending = -2, intro = 1, scale = 3, fullscreen = 0, scanlines = 0, trainer = 0;
     double speed = 47.0;
     const char *log_path = NULL, *replay_path = NULL, *export_dir = NULL;
+    int credits_only = 0;
     uint32_t seed = (uint32_t)time(NULL) * 2654435761u;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--opponent") && i + 1 < argc) { opponent = SDL_atoi(argv[++i]) & 3; intro = 0; }
@@ -957,6 +980,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
         else if (!strcmp(argv[i], "--no-hires")) opt_hires = 0;
+        else if (!strcmp(argv[i], "--credits")) credits_only = 1;
         else if (!strcmp(argv[i], "--export-pictures") && i + 1 < argc) export_dir = argv[++i];
         else if (!strcmp(argv[i], "--display") && i + 1 < argc) { opt_display = SDL_atoi(argv[++i]); opt_display = SDL_clamp(opt_display, 0, DISPLAY_MODES - 1); }
         else if (!strcmp(argv[i], "--trainer")) trainer = 1;
@@ -1008,7 +1032,16 @@ int main(int argc, char **argv)
             set.bundled = 1;
         }
         if (app_open(&a, 2, 0) != 0) return 1;
-        int lr = launcher_run(a.win, a.ren, &set, base);
+        int lr;
+        while ((lr = launcher_run(a.win, a.ren, &set, base)) == 3) {   /* CREDITS, then back */
+            settings_save(&set, cfg);
+            opt_display = SDL_clamp(set.display, 0, DISPLAY_MODES - 1);
+            a.scanlines = set.scanlines;
+            app_game_mode(&a, set.scale, set.fullscreen);
+            run_credits(&a, set.data);
+            SDL_SetWindowFullscreen(a.win, 0);
+            app_title(&a);
+        }
         if (!lr) {
             settings_save(&set, cfg);
             SDL_Quit();
@@ -1083,9 +1116,10 @@ int main(int argc, char **argv)
     a.trainer = trainer;
     app_title(&a);
     SDL_AudioStream *audio = NULL;
-    sound_lock = SDL_CreateMutex();
+    if (!sound_lock) sound_lock = SDL_CreateMutex();
     if (snd_init(&sound, gd.mem + SOUND_BASE, SOUND_LEN, SOUND_BASE, AUDIO_RATE) == 0) {
         snd_set_image(&sound, gd.mem, AMIGA_MEM_SIZE);
+        sound_ready = 1;
         SDL_AudioSpec spec = {SDL_AUDIO_S16, 2, AUDIO_RATE};
         audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_feed, NULL);
         if (audio) SDL_ResumeAudioStreamDevice(audio);
@@ -1093,12 +1127,13 @@ int main(int argc, char **argv)
     }
     int rc;
     if (pictures) rc = run_pictures(&a, &gd);
+    else if (credits_only) { int o; uint32_t sd; rc = run_intro(&a, data_dir, &o, &sd, 1) < 0; }
     else if (ending >= -1 && ending <= 3) rc = run_ending(&a, data_dir, ending);
     else {
         rc = 0;
         int go = 1;
         if (intro) {
-            int ir = run_intro(&a, data_dir, &opponent, &seed);
+            int ir = run_intro(&a, data_dir, &opponent, &seed, 0);
             if (ir == 0) go = 0;                     /* closed during the intro */
             else if (ir < 0) SDL_Log("no intro (INT1/INT2): starting the game");
         }

@@ -126,6 +126,10 @@ INTRO_API void intro_frame(Intro *in, int mx, int my, int button, int key);
  * list (per-line colours on the selection screen) and the sprites (the
  * selection screen's pointer). */
 INTRO_API void intro_render(const Intro *in, uint32_t *argb);
+/* Credits only: run unseen up to the credits (returns 1 if the music started on
+ * the way); then intro_frame() as usual until intro_credits_done(). */
+INTRO_API int  intro_to_credits(Intro *in);
+INTRO_API int  intro_credits_done(const Intro *in);
 
 /* ---- the parts of intro_frame, for tests ---- */
 INTRO_API void intro_input(Intro *in, int mx, int my, int button, int key);

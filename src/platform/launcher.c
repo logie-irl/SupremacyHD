@@ -881,6 +881,8 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
             SDL_snprintf(note, sizeof note, "SET THE GAME DATA FOLDER FIRST");
             note_rgb = C_BAD;
         }
+        Box cred = button(ren, LW - 96, 10, 80, "CREDITS", hv(LW - 96, 10, 80, 16, mx, my), ok);
+        if (ok && click == 1 && inside(cred, mx, my)) result = 3;   /* the intro's credits, then back here */
 #undef HOVER
 #undef CLICKED
         {                                           /* tests: SUP_LAUNCHER_SHOT=file.bmp (SUP_LAUNCHER_PLAY: then PLAY;

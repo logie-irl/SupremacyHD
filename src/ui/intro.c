@@ -990,6 +990,23 @@ int intro_dma(Intro *in) { return in->dmacon; }
 void intro_lose_irq(Intro *in, int line) { in->lose_line = line; }
 /* 0 pc, 1 busy, 2 music_ticks, 3 music_on, 4 music_init, 5 challenge,
  * 6 handover, 7 opponent, 8 seed, 9 frame */
+/* Credits only (the launcher's CREDITS): run the intro with no input, without
+ * showing it, up to the credits banner. Returns 1 if the music was started on
+ * the way (music_init), so the caller starts it. */
+int intro_to_credits(Intro *in)
+{
+    int music = 0;
+    for (int f = 0; f < 20000 && in->pc != P_BANNER; f++) {
+        intro_frame(in, 160, 100, 0, 0);
+        music |= in->music_init;
+    }
+    return music;
+}
+
+/* 1 when the credits are over (or skipped): the intro has gone on to the
+ * opponent selection. */
+int intro_credits_done(const Intro *in) { return in->pc >= P_SEL; }
+
 int intro_state(Intro *in, int what)
 {
     switch (what) {

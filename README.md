@@ -93,6 +93,8 @@ holds the files.
 Open the app. The **launcher** comes first, with the thinking man from the
 intro behind the options (taken from your own game files). Press
 **PLAY NEW GAME**, or **LOAD SAVED GAME** to carry on a saved game.
+**CREDITS** (top right) plays the intro's credits over the starfield, with
+its music; a click or a key ends them and you are back in the launcher.
 
 ### Launcher settings
 
@@ -160,6 +162,7 @@ supremacy <data folder> [options]
   --trainer            the cheat keys work (F8 switches)
   --fix-bugs           fix the original game's bugs
   --no-hires           ignore hi-res pictures
+  --credits            only play the intro's credits, then quit
   --export-pictures D  write the nine original pictures to folder D, then quit
   --log FILE           where to write the session log
   --replay FILE        play a session log again, then carry on
