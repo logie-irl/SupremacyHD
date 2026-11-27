@@ -22,6 +22,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 cd "$(dirname "$0")/.."
+# a build folder made before the repository was moved or renamed: start it again
+if [ -f build-hd/CMakeCache.txt ] && ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$(pwd)\$" build-hd/CMakeCache.txt; then
+  echo "build-hd was made in another folder: starting it again"
+  rm -rf build-hd
+fi
 cmake -S . -B build-hd -DCMAKE_BUILD_TYPE=Release -DSUP_HD=ON
 cmake --build build-hd
 EXTRA=""
