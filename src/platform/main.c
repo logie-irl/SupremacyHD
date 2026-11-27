@@ -49,23 +49,24 @@
 #include "intro.h"
 #include "launcher.h"
 #include "hires.h"
-#include "os4_dialog.h"
 #include "build_id.h"           /* SUP_VERSION, SUP_BUILD_ID, SUP_BUILD_DATE (cmake/build_id.cmake) */
 
-/* The version banner (AmigaOS Version command; release staging checks the
- * commit in it). */
+#ifdef SUP_HD                           /* the separate SupremacyHD app (cmake -DSUP_HD=ON) */
+#define APP_TITLE "Supremacy HD"
+#define PREF_APP "SupremacyHD"
+#else
+#define APP_TITLE "Supremacy"
+#define PREF_APP "Supremacy"
+#endif
+
+/* The version banner (names the commit built). */
 __attribute__((used)) static const char sup_banner[] =
     "$VER: Supremacy " SUP_VERSION " (" SUP_BUILD_DATE ") build " SUP_BUILD_ID;
 
 /* an error for a player who started from the icon (no console to read) */
 static void show_error(SDL_Window *win, const char *text)
 {
-#ifdef __amigaos4__
-    (void)win;
-    os4_message("Supremacy", text);         /* Intuition, not SDL's message box */
-#else
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Supremacy", text, win);
-#endif
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, APP_TITLE, text, win);
 }
 
 /* Sound: the sequencer region $60000-$70C9F of the image (from GAM2). */
@@ -219,14 +220,6 @@ static void app_game_coords(App *a, float wx, float wy, float *lx, float *ly)
 }
 
 /* The window title says when the trainer, and peace, are on. */
-#ifdef SUP_HD                           /* the separate SupremacyHD app (cmake -DSUP_HD=ON) */
-#define APP_TITLE "Supremacy HD"
-#define PREF_APP "SupremacyHD"
-#else
-#define APP_TITLE "Supremacy"
-#define PREF_APP "Supremacy"
-#endif
-
 static void app_title(App *a)
 {
     SDL_SetWindowTitle(a->win, !a->trainer ? APP_TITLE
@@ -247,9 +240,6 @@ static void app_game_mode(App *a, int scale, int fullscreen)
 static int app_open(App *a, int scale, int fullscreen)
 {
     if (scale < 1) scale = 1;
-    /* Windows: the window's icon is the exe's icon resource 1 (supremacy.rc) */
-    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");
-    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL, "1");
     SDL_WindowFlags fl = SDL_WINDOW_RESIZABLE | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0);
     if (!SDL_CreateWindowAndRenderer(APP_TITLE, 320 * scale, display_height(opt_display) * scale, fl, &a->win, &a->ren)) {
         fprintf(stderr, "window: %s\n", SDL_GetError());
@@ -509,11 +499,6 @@ static void SDLCALL log_out(void *u, int cat, SDL_LogPriority pri, const char *m
         fflush(log_file);
     }
     if (log_default) log_default(log_default_user, cat, pri, msg);
-}
-
-static void SDLCALL log_quiet(void *u, int cat, SDL_LogPriority pri, const char *msg)
-{
-    (void)u; (void)cat; (void)pri; (void)msg;      /* the session log file has them */
 }
 
 static void log_open(const char *path)
@@ -1000,7 +985,6 @@ int main(int argc, char **argv)
         if (base && SDL_GetPathInfo(probe, &pi) && pi.type == SDL_PATHTYPE_FILE)
             SDL_snprintf(bundled, sizeof bundled, "%sSupremacyData", base);
     }
-#ifdef __APPLE__
     /* Inside a signed Supremacy.app the base path is in the bundle, which must stay
      * read-only: keep settings, saved games and the game data under
      * ~/Library/Application Support/Supremacy/ instead. */
@@ -1013,7 +997,6 @@ int main(int argc, char **argv)
             base = pref_base;
         }
     }
-#endif
     SDL_snprintf(save_dir, sizeof save_dir, "%ssave", base ? base : "");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
@@ -1021,10 +1004,7 @@ int main(int argc, char **argv)
     }
     App a = {0};
     static Settings set;
-    int launched = argc <= 1, load_slot = -1;        /* no arguments; 0 = started from Workbench */
-    if (argc == 0) {                                 /* Workbench: any output would open a console */
-        SDL_SetLogOutputFunction(log_quiet, NULL);
-    }
+    int launched = argc <= 1, load_slot = -1;        /* no arguments: started from the app */
     if (launched) {                                  /* from the icon: the launcher */
         char cfg[1100];
         SDL_snprintf(cfg, sizeof cfg, "%ssupremacy.cfg", base ? base : "");

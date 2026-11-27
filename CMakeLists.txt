@@ -1,13 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(Supremacy C)
 
-# Builds (README.md has step-by-step instructions):
-#   Windows (MSYS2 UCRT64 terminal, GCC and SDL 3 from MSYS2) and Linux
-#   (GCC or Clang, SDL 3.2 or later):
-#     cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-#     cmake --build build
-#   AmigaOS 4 (Docker image walkero/amigagccondocker:os4-gcc15: GCC 15,
-#   newlib, SDL 3 from the SDK): bash tools/build_os4.sh
+# macOS (README.md has the steps): brew install cmake sdl3, then
+#   cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+#   sh tools/make_macos_app.sh / sh tools/make_hd_app.sh for the apps
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -27,22 +23,9 @@ set(CORE_SOURCES
   src/core/cheats.c
 )
 
-# The game core as a static library (for the game) ...
+# The game core as a static library
 add_library(supcore STATIC ${CORE_SOURCES})
 target_include_directories(supcore PUBLIC src/core)
-
-# ... and, on Windows, as a DLL for the Python checks against the original
-# (test scripts load it with ctypes).
-if(WIN32)
-  add_library(supcore_test SHARED ${CORE_SOURCES})
-  target_include_directories(supcore_test PUBLIC src/core)
-  target_compile_definitions(supcore_test PRIVATE SUP_BUILD_DLL)
-  set_target_properties(supcore_test PROPERTIES PREFIX "" OUTPUT_NAME "supcore")
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    # self-contained DLL: no libgcc_s dependency when Python loads it
-    target_link_options(supcore_test PRIVATE -static-libgcc -static)
-  endif()
-endif()
 
 # ---- sound: the original's sequencer + a Paula mixer ----
 add_library(supsound STATIC src/sound/sequencer.c src/sound/paula.c src/sound/endmusic.c)
@@ -69,27 +52,13 @@ add_custom_target(build_id
   BYPRODUCTS ${CMAKE_BINARY_DIR}/gen/build_id.h)
 option(SUP_HD "Build the separate SupremacyHD app (own settings folder, hi-res picture packs)" OFF)
 set(GAME_SOURCES src/platform/main.c src/platform/launcher.c src/platform/extract.c
-                 src/platform/os4_dialog.c src/platform/hires.c)
-if(AMIGAOS4)
-  # The OS4 SDK has SDL3 (newlib) as a static library without a CMake config.
+                 src/platform/hires.c)
+find_package(SDL3 CONFIG QUIET)
+if(SDL3_FOUND)
   add_executable(supremacy ${GAME_SOURCES})
-  target_link_libraries(supremacy PRIVATE supui supassets supsound supcore SDL3 pthread m)
-  # the Workbench icon next to the program
-  add_custom_command(TARGET supremacy POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/assets/icons/supremacy.info
-            $<TARGET_FILE_DIR:supremacy>/supremacy.info)
+  target_link_libraries(supremacy PRIVATE supui supassets supsound supcore SDL3::SDL3)
 else()
-  find_package(SDL3 CONFIG QUIET)
-  if(SDL3_FOUND)
-    if(WIN32)
-      enable_language(RC)
-      list(APPEND GAME_SOURCES src/platform/supremacy.rc)   # the icon
-    endif()
-    add_executable(supremacy ${GAME_SOURCES})
-    target_link_libraries(supremacy PRIVATE supui supassets supsound supcore SDL3::SDL3)
-  else()
-    message(STATUS "SDL3 not found: the game executable is not built (core library only)")
-  endif()
+  message(STATUS "SDL3 not found: the game executable is not built (core library only)")
 endif()
 if(TARGET supremacy)
   add_dependencies(supremacy build_id)

@@ -24,11 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(_WIN32) && defined(SUP_BUILD_DLL)
-#define END_API __declspec(dllexport)
-#else
 #define END_API
-#endif
 
 #define ENDING_DEFEAT (-1)
 

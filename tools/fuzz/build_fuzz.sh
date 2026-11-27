@@ -1,7 +1,6 @@
 #!/bin/sh
 # Builds the test programs in tools/fuzz with AddressSanitizer and
-# UndefinedBehaviorSanitizer, for Linux (or any system with gcc or clang
-# that supports the sanitizers). They need no SDL and open no window.
+# UndefinedBehaviorSanitizer (gcc or clang). They need no SDL and open no window.
 #
 #   fuzz_game     plays whole games with random input and reports freezes
 #   fuzz_extract  feeds damaged archives and disk images to the extractor
@@ -10,8 +9,7 @@
 #
 # Run it from the repository root:
 #   sh tools/fuzz/build_fuzz.sh
-# On Windows, run it in Docker (any Linux image with gcc works), e.g.:
-#   docker run --rm -v "%CD%":/work -w /work gcc:14 sh tools/fuzz/build_fuzz.sh
+# On macOS use clang: FUZZ_CC=clang sh tools/fuzz/build_fuzz.sh
 #
 # The programs are written to build-fuzz/. Each needs the game's data
 # folder (see README.md); usage is at the top of each source file.

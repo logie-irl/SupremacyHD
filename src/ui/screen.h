@@ -15,11 +15,7 @@
 
 #include "game.h"
 
-#if defined(_WIN32) && defined(SUP_BUILD_DLL)
-#define UI_API __declspec(dllexport)
-#else
 #define UI_API
-#endif
 
 #define SCREEN_BASE  0x72000u
 #define SCREEN_LINE  200u                  /* bytes per line (5 planes x 40) */

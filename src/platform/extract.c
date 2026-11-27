@@ -30,11 +30,7 @@ static int wanted(const char *name)
 static int write_file(const char *dir, int k, const uint8_t *d, size_t n)
 {
     char path[1200];
-#ifdef _WIN32
-    const char *name = k == WIN_DEFEAT ? "WIN_" : WANTED[k];
-#else
     const char *name = WANTED[k];
-#endif
     SDL_snprintf(path, sizeof path, "%s/%s", dir, name);
     FILE *f = fopen(path, "wb");
     if (!f) return -1;

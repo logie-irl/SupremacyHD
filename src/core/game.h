@@ -15,11 +15,7 @@
 
 #include <stdint.h>
 
-#if defined(_WIN32) && defined(SUP_BUILD_DLL)
-#define SUP_API __declspec(dllexport)
-#else
 #define SUP_API
-#endif
 
 #define STATE_BASE 0xD440u          /* original address of the block */
 #define STATE_SIZE 0x1B58u          /* 7,000 bytes */

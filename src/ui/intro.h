@@ -66,11 +66,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(_WIN32) && defined(SUP_BUILD_DLL)
-#define INTRO_API __declspec(dllexport)
-#else
 #define INTRO_API
-#endif
 
 #define INTRO_KEY_RAW 0x40          /* the raw key code a key press is given (space) */
 

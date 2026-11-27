@@ -5,7 +5,6 @@
 
 #include "launcher.h"
 #include "extract.h"
-#include "os4_dialog.h"
 #include "gamedata.h"
 #include "mainscreen.h"
 #include "intro.h"
@@ -156,7 +155,6 @@ static char dlg_path[4 * 1024];      /* several files (the two disks): one per l
 static int dlg_target;              /* 0 none, 1 data folder, 2 replay file, 3 archive */
 static int dlg_done, dlg_failed;
 
-#ifndef __amigaos4__                /* SDL's dialogs: not used on AmigaOS 4 (see pick) */
 static void SDLCALL dlg_result(void *user, const char *const *list, int filter)
 {
     (void)filter;
@@ -173,37 +171,17 @@ static void SDLCALL dlg_result(void *user, const char *const *list, int filter)
     }
     SDL_UnlockMutex(dlg_lock);
 }
-#endif
 
 /* A file or folder picker: 1 the data folder, 2 a session log, 3 archives or
  * IPF disks (several). The result arrives like SDL's: dlg_path / dlg_done. */
 static void pick(SDL_Window *win, int target, const char *initial)
 {
-#ifdef __amigaos4__
-    /* the ASL requester (os4_dialog.c: SDL's dialog thread crashes on OS4) */
-    static char buf[sizeof dlg_path];
-    int r = target == 1 ? os4_request("Game data folder", initial, 1, 0, NULL, buf, sizeof buf)
-          : target == 2 ? os4_request("Session log to replay", initial, 0, 0, "#?.log", buf, sizeof buf)
-                        : os4_request("WHDLoad archive or IPF disks", initial, 0, 1,
-                                      "#?.(lha|lzh|zip|ipf)", buf, sizeof buf);
-    (void)win;
-    SDL_LockMutex(dlg_lock);
-    if (r == 1) {
-        SDL_strlcpy(dlg_path, buf, sizeof dlg_path);
-        dlg_target = target;
-        dlg_done = 1;
-    } else if (r < 0) {
-        dlg_failed = 1;
-    }
-    SDL_UnlockMutex(dlg_lock);
-#else
     static const SDL_DialogFileFilter logs[] = {{"Session logs", "log"}, {"All files", "*"}};
     static const SDL_DialogFileFilter arcs[] = {
         {"WHDLoad archives and IPF disks", "lha;lzh;zip;ipf"}, {"All files", "*"}};
     if (target == 1) SDL_ShowOpenFolderDialog(dlg_result, (void *)1, win, initial, false);
     else if (target == 2) SDL_ShowOpenFileDialog(dlg_result, (void *)2, win, logs, 2, initial, false);
     else SDL_ShowOpenFileDialog(dlg_result, (void *)3, win, arcs, 2, initial, true);
-#endif
 }
 
 static int data_ok(const char *dir, char *why, size_t n)

@@ -28,11 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(_WIN32) && defined(SUP_BUILD_DLL)
-#define SND_API __declspec(dllexport)
-#else
 #define SND_API
-#endif
 
 #define SEQ_DATA_BASE   0x60000u    /* original address of the data region */
 #define SEQ_DATA_SIZE   0x10CA0u    /* $60000-$70C9F */
