@@ -46,5 +46,5 @@ if [ "$NODATA" = 1 ]; then
 fi
 APP="${NAME:-SupremacyHD}.app"
 EXTRA=""
-if [ -d "$HIRES" ]; then EXTRA="--with-hires $HIRES"; else echo "No $HIRES folder yet: the app will look in ~/Library/Application Support/SupremacyHD/HiRes"; fi
+if [ -d "$HIRES" ]; then EXTRA="--with-hires $HIRES"; else echo "HD pictures: built in (made from your game files). A $HIRES pack, if you make one, replaces them."; fi
 sh tools/make_macos_app.sh --with-data "$DATA" $EXTRA build-hd "$APP"
