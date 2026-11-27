@@ -798,15 +798,20 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
         a->ov = NULL;
         if (a->hires_loaded && opt_hires) {            /* a hi-res backdrop where the screen still shows the picture */
             static Picture bgp;
-            static uint32_t bg_addr, bgpx[320 * 200], ovpx[320 * 200];
+            static uint32_t bg_addr, ovpx[320 * 200];
             SDL_Texture *ht = hires_find(ui_last_picture);
             if (ht && (bg_addr == ui_last_picture || picture_decode(gd, ui_last_picture, &bgp) == 0)) {
                 bg_addr = ui_last_picture;
                 int same = 0;
                 for (int k = 0; k < 320 * 200; k++) same += idx[k] == bgp.pixels[k];
                 if (same > 320 * 200 / 4) {            /* (a picture from another path leaves this stale) */
-                    render_copper(bgpx, bgp.pixels, ui.colour, ui.copper, gd->mem);
-                    for (int k = 0; k < 320 * 200; k++) ovpx[k] = px[k] == bgpx[k] ? 0 : (px[k] | 0xFF000000u);
+                    /* the hi-res picture shows where the pixel is still the picture's and has the colour
+                     * the pack was made from (the picture's own palette); where the game recolours lines
+                     * (the copper) or draws over the picture, its own pixels are shown */
+                    for (int k = 0; k < 320 * 200; k++) {
+                        uint8_t c = bgp.pixels[k];
+                        ovpx[k] = idx[k] == c && px[k] == (0xFF000000u | bgp.palette[c & 31]) ? 0 : (px[k] | 0xFF000000u);
+                    }
                     a->hi = ht;
                     a->ov = ovpx;
                 }
