@@ -21,17 +21,17 @@ set -eu
 
 DATA=""
 HIRES=""
-POS=""
+BUILD=""
+APP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --with-data) [ $# -ge 2 ] || { echo "--with-data needs a folder" >&2; exit 1; }; DATA=$2; shift 2 ;;
     --with-hires) [ $# -ge 2 ] || { echo "--with-hires needs a folder" >&2; exit 1; }; HIRES=$2; shift 2 ;;
-    *) POS="$POS $1"; shift ;;
+    *) if [ -z "$BUILD" ]; then BUILD=$1; else APP=$1; fi; shift ;;   # (names may contain spaces)
   esac
 done
-set -- $POS
-BUILD=${1:-build}
-APP=${2:-Supremacy.app}
+BUILD=${BUILD:-build}
+APP=${APP:-Supremacy.app}
 BIN="$BUILD/supremacy"
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -111,7 +111,7 @@ EOF
 
 # The app's name follows its file name (SuperMac.app is called "SuperMac").
 NAME=$(basename "$APP" .app)
-ID=$(echo "$NAME" | tr -cd "A-Za-z0-9" | tr "A-Z" "a-z")
+ID=$(echo "$NAME" | tr " " "-" | tr -cd "A-Za-z0-9-" | tr "A-Z" "a-z")
 sed -e "s|io.github.supremacy-mac|io.github.supremacy-mac.$ID|" \
     -e "s|<key>CFBundleName</key><string>Supremacy</string>|<key>CFBundleName</key><string>$NAME</string>|" \
     -e "s|<key>CFBundleDisplayName</key><string>Supremacy</string>|<key>CFBundleDisplayName</key><string>$NAME</string>|" \

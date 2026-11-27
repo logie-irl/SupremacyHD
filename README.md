@@ -11,11 +11,13 @@ the same screens, sound and music, including the intro, the four victory
 sequences and the defeat sequence. On top of that it adds modern display
 options, hi-res pictures, optional bug fixes and a trainer.
 
-There are two apps, built from the same source:
+There are three apps, built from the same source:
 
-- **SuperMac.app**: the game as the original looked.
-- **SupremacyHD.app**: the same game with hi-res, smoothed artwork (on by
-  default, switchable in the launcher), with its own settings and saved games.
+- **Supremacy HD.app**: the hi-res game with **no game files inside**. The
+  launcher asks for your game files the first time (BROWSE or EXTRACT), so
+  this is the one you can share.
+- **SupremacyHD.app**: the same, with your own game files inside (for you only).
+- **SuperMac.app**: the game as the original looked, with your game files inside.
 
 > **You need your own copy of the game.** This repository contains none of
 > the original's code, graphics, sound, music or text (the program icon,
@@ -296,6 +298,7 @@ You need macOS 27.x, the Xcode command-line tools (`xcode-select --install`),
 | `sh tools/make_macos_app.sh` | `Supremacy.app`, asking for the game data on first start |
 | `sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app` | `SuperMac.app` with your game files inside |
 | `sh tools/make_hd_app.sh` | `SupremacyHD.app` with your game files (and `HiRes` pack, if there is one) inside |
+| `sh tools/make_hd_app.sh --no-data` | `Supremacy HD.app` with no game files inside: the launcher asks for them (shareable) |
 
 The app's name follows its file name. Each app carries its own copy of SDL 3
 and is ad-hoc signed, which is enough to run it on the Mac that built it. If
