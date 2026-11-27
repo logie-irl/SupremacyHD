@@ -1,7 +1,6 @@
 # Build output
 /build/
 /build-*/
-/build-ios/
 *.o
 *.obj
 *.exe

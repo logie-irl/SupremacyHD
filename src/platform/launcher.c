@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 
 #include "launcher.h"
-#include "touch.h"
 #include "extract.h"
 #include "os4_dialog.h"
 #include "gamedata.h"
@@ -33,7 +32,6 @@ void settings_defaults(Settings *s, const char *base)
     s->hires = 1;
     s->trainer = 0;
     s->bugfixes = 0;
-    s->touch = 0;
     s->win_w = 2 * LW;
     s->win_h = 2 * LH;
     s->load_slot = -1;
@@ -67,7 +65,6 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "display")) s->display = SDL_clamp(SDL_atoi(v), 0, 2);
         else if (!strcmp(k, "trainer")) s->trainer = SDL_atoi(v) != 0;
         else if (!strcmp(k, "bugfixes")) s->bugfixes = SDL_atoi(v) != 0;
-        else if (!strcmp(k, "touch")) s->touch = SDL_atoi(v) != 0;
         else if (!strcmp(k, "launcher_w")) s->win_w = SDL_clamp(SDL_atoi(v), LW / 2, 8 * LW);
         else if (!strcmp(k, "launcher_h")) s->win_h = SDL_clamp(SDL_atoi(v), LH / 2, 8 * LH);
     }
@@ -80,8 +77,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nscanlines=%d\ndisplay=%d\nhires=%d\ntrainer=%d\nbugfixes=%d\ntouch=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->display, s->hires, s->trainer, s->bugfixes, s->touch,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\ndisplay=%d\nhires=%d\ntrainer=%d\nbugfixes=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->display, s->hires, s->trainer, s->bugfixes,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -437,11 +434,11 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
     int result = -1;
     while (result < 0) {
         float mx = -1, my = -1;
-        touch_mouse_state(&mx, &my);
+        SDL_GetMouseState(&mx, &my);
         SDL_RenderCoordinatesFromWindow(ren, mx, my, &mx, &my);
         int click = 0;
         SDL_Event ev;
-        while (touch_poll_event(&ev)) {
+        while (SDL_PollEvent(&ev)) {
             if (ev.type == SDL_EVENT_QUIT) { result = 0; SDL_Log("launcher: quit event"); }
             if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN && ev.button.button == SDL_BUTTON_LEFT) {
                 click = 1;
@@ -640,7 +637,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         y += 24;
 
         /* window size */
-        if (!touch_present()) {
+        {
             text(ren, L, y + 4, C_TEXT, "WINDOW SIZE");
             b = button(ren, V, y, 24, "<", hv(V, y, 24, 16, mx, my), s->scale > 1);
             if (CLICKED(b)) s->scale = SDL_max(1, s->scale - 1);
@@ -655,7 +652,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         }
 
         /* full screen */
-        if (!touch_present()) {
+        {
             text(ren, L, y + 4, C_TEXT, "FULL SCREEN");
             b = button(ren, V, y, 64, s->fullscreen ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
             if (CLICKED(b)) s->fullscreen = !s->fullscreen;
@@ -671,7 +668,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
             b = button(ren, V, y, 64, dn[s->display % 3], hv(V, y, 64, 16, mx, my), 1);
             if (CLICKED(b)) s->display = (s->display + 1) % 3;
             text(ren, V + 76, y + 4, C_DIM, dh[s->display % 3]);
-            if (!touch_present()) text(ren, V + 76 + 8 * (float)strlen(dh[s->display % 3]) + 12, y + 4, C_DIM, "F12");
+            text(ren, V + 76 + 8 * (float)strlen(dh[s->display % 3]) + 12, y + 4, C_DIM, "F12");
             y += 24;
         }
 
@@ -696,7 +693,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         text(ren, V + 84, y + 4, C_TEXT, "TRAINER");
         b = button(ren, V + 148, y, 64, s->trainer ? "ON" : "OFF", hv(V + 148, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) s->trainer = !s->trainer;
-        if (!touch_present()) text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
+        text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
         y += 24;
 
         /* bug fixes */
@@ -706,17 +703,8 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         text(ren, V + 76, y + 4, C_DIM, s->bugfixes ? "THE ORIGINAL'S BUGS ARE FIXED" : "PLAYS AS THE ORIGINAL DID");
         y += 24;
 
-        /* touch screens */
-        if (touch_present()) {
-            text(ren, L, y + 4, C_TEXT, "TOUCH");
-            b = button(ren, V, y, 96, s->touch ? "TRACKPAD" : "TAP", hv(V, y, 96, 16, mx, my), 1);
-            if (CLICKED(b)) s->touch = !s->touch;
-            text(ren, V + 108, y + 4, C_DIM, "2=RIGHT CLICK 3=MODE 4=KEYBOARD");
-            y += 24;
-        }
-
         /* replay */
-        if (!touch_present()) {
+        {
             text(ren, L, y + 4, C_TEXT, "REPLAY A SESSION LOG");
             Box rfield = {V, y, 236, 16};
             frame(ren, rfield, editing == 2 ? C_HOVER : C_PANEL, editing == 2 ? C_GOLD : C_DIM);
