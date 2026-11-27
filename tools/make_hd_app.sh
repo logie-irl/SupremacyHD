@@ -17,6 +17,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --data) DATA=$2; shift 2 ;;
     --hires) HIRES=$2; shift 2 ;;
+    \#*) break ;;                      # a pasted comment
     *) echo "unknown option $1" >&2; exit 1 ;;
   esac
 done
