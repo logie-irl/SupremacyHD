@@ -234,7 +234,8 @@ artwork: keep them, and any app containing them, for your own use.
 ## Trainer
 
 Off by default. Switch it on in the launcher or with **F8** during the game;
-a box then lists what each key does (press OK), and the window title says
+a cracktro-style screen then lists what each key does (press OK, Return or
+Esc), and the window title says
 when it is on. Cheats are never applied during a
 replay.
 

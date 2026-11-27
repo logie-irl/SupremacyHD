@@ -184,23 +184,168 @@ static void pick(SDL_Window *win, int target, const char *initial)
     else SDL_ShowOpenFileDialog(dlg_result, (void *)3, win, arcs, 2, initial, true);
 }
 
-void trainer_help(SDL_Window *win)
+/* ---- the trainer screen: an old Amiga cracktro in the launcher's colours ----
+ * Copper bars, a three-speed starfield, a wobbling colour-cycled logo, the keys
+ * in a gold-framed panel and a sine scroller; OK (or Return / Esc / Space)
+ * closes it. Drawn in the window's own renderer at the launcher's 640 x 400,
+ * whatever the window was showing (the renderer's state is put back after). */
+static unsigned rainbow(float t)
 {
-    static const SDL_MessageBoxButtonData ok[] = {
-        {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT | SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "OK"}};
-    const SDL_MessageBoxData box = {
-        SDL_MESSAGEBOX_INFORMATION, win, "Trainer on",
-        "The trainer's keys, in the game (on a MacBook hold Fn):\n\n"
-        "F5  +100,000 credits on each of your planets\n"
-        "F6  food, minerals, fuels and energy filled to 30,000\n"
-        "F7  population doubled (up to 30,000), morale 100\n"
-        "F9  peace on or off: the enemy sends no attacks, and\n"
-        "      enemy forces on your planets are cleared\n"
-        "F8  trainer on or off (off also ends peace)\n\n"
-        "The cheats change only your own planets and never work during a replay.",
-        1, ok, NULL};
-    int id;
-    SDL_ShowMessageBox(&box, &id);
+    float r = 0.5f + 0.5f * SDL_sinf(t), g = 0.5f + 0.5f * SDL_sinf(t + 2.094f), b = 0.5f + 0.5f * SDL_sinf(t + 4.189f);
+    return (unsigned)(r * 255) << 16 | (unsigned)(g * 255) << 8 | (unsigned)(b * 255);
+}
+
+static void copper_bar(SDL_Renderer *r, float y, unsigned rgb)
+{
+    for (int i = -7; i <= 7; i++) {           /* 15 lines, brightest in the middle */
+        float k = 1.0f - (float)(i < 0 ? -i : i) / 8.0f;
+        unsigned c = (unsigned)(((rgb >> 16) & 255) * k) << 16 | (unsigned)(((rgb >> 8) & 255) * k) << 8 |
+                     (unsigned)((rgb & 255) * k);
+        if (i == 0) c = 0xFFFFFFu & (c | 0x404040u);
+        colour(r, c);
+        SDL_FRect l = {0, y + (float)i * 2, LW, 2};
+        SDL_RenderFillRect(r, &l);
+    }
+}
+
+void trainer_help(SDL_Window *win, SDL_Renderer *ren)
+{
+    if (!ren) return;
+    /* the renderer's state, put back at the end */
+    SDL_Texture *target = SDL_GetRenderTarget(ren);
+    int lw = 0, lh = 0;
+    SDL_RendererLogicalPresentation lmode = SDL_LOGICAL_PRESENTATION_DISABLED;
+    SDL_GetRenderLogicalPresentation(ren, &lw, &lh, &lmode);
+    float sx = 1, sy = 1;
+    SDL_GetRenderScale(ren, &sx, &sy);
+    SDL_BlendMode bm;
+    SDL_GetRenderDrawBlendMode(ren, &bm);
+    SDL_SetRenderTarget(ren, NULL);
+    SDL_SetRenderScale(ren, 1, 1);
+    SDL_SetRenderLogicalPresentation(ren, LW, LH, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+
+    static const char *const keys[][2] = {
+        {"F5", "+100,000 CREDITS ON EACH OF YOUR PLANETS"},
+        {"F6", "FOOD, MINERALS, FUELS AND ENERGY TO 30,000"},
+        {"F7", "POPULATION DOUBLED, MORALE 100"},
+        {"F9", "PEACE ON/OFF: THE ENEMY NEVER ATTACKS"},
+        {"F8", "TRAINER ON/OFF (OFF ALSO ENDS PEACE)"},
+    };
+    static const char scroll[] =
+        "                                        "
+        "*** SUPREMACY HD *** TRAINER +4 ACTIVATED ...  "
+        "F5 CREDITS ... F6 RESOURCES ... F7 PEOPLE ... F9 PEACE ...  "
+        "ON A MACBOOK HOLD FN FOR THE F KEYS ...  "
+        "THE CHEATS ONLY TOUCH YOUR OWN PLANETS AND NEVER WORK DURING A REPLAY ...  "
+        "GREETINGS TO PROBE SOFTWARE, DAVID PERRY, NICK BRUTY, DARK ANGEL AND ALL AMIGA FANS ...  "
+        "YOUR WILL BE DONE ...  PRESS OK TO PLAY ...          ";
+    enum { NSTARS = 90 };
+    static float star_x[NSTARS], star_y[NSTARS];
+    static int star_s[NSTARS], stars_made;
+    if (!stars_made) {
+        for (int i = 0; i < NSTARS; i++) {
+            star_x[i] = (float)SDL_rand(LW);
+            star_y[i] = (float)SDL_rand(LH);
+            star_s[i] = 1 + SDL_rand(3);
+        }
+        stars_made = 1;
+    }
+
+    const Box panel = {88, 112, LW - 176, 150};
+    const Box ok = {LW / 2 - 48, panel.y + panel.h - 26, 96, 16};
+    Uint64 t0 = SDL_GetTicks();
+    int done = 0;
+    while (!done) {
+        SDL_Event ev;
+        float mx = -1, my = -1;
+        SDL_GetMouseState(&mx, &my);
+        SDL_RenderCoordinatesFromWindow(ren, mx, my, &mx, &my);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_EVENT_QUIT) { SDL_PushEvent(&ev); done = 1; }
+            if (ev.type == SDL_EVENT_KEY_DOWN && !ev.key.repeat &&
+                (ev.key.key == SDLK_RETURN || ev.key.key == SDLK_KP_ENTER || ev.key.key == SDLK_ESCAPE ||
+                 ev.key.key == SDLK_SPACE))
+                done = 1;
+            if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                float cx, cy;
+                SDL_RenderCoordinatesFromWindow(ren, ev.button.x, ev.button.y, &cx, &cy);
+                if (inside(ok, cx, cy)) done = 1;
+            }
+        }
+        float t = (float)(SDL_GetTicks() - t0) / 1000.0f;
+
+        colour(ren, 0x000000u);
+        SDL_RenderClear(ren);
+        /* stars */
+        for (int i = 0; i < NSTARS; i++) {
+            float x = SDL_fmodf(star_x[i] - t * 40.0f * (float)star_s[i], (float)LW);
+            if (x < 0) x += LW;
+            colour(ren, star_s[i] == 3 ? 0xFFFFFFu : star_s[i] == 2 ? 0x9A96B0u : 0x4C4866u);
+            SDL_FRect p = {x, star_y[i], (float)star_s[i] > 2 ? 2.0f : 1.0f, 1};
+            SDL_RenderFillRect(ren, &p);
+        }
+        /* copper bars behind everything */
+        static const unsigned bars[] = {0xCCA040u, 0x8040C0u, 0x4060E0u, 0xC04060u};
+        for (int k = 0; k < 4; k++)
+            copper_bar(ren, LH / 2 + SDL_sinf(t * 1.7f + (float)k * 0.8f) * 170.0f, bars[k]);
+
+        /* the logo: big letters, each its own colour and height */
+        static const char logo[] = "SUPREMACY HD";
+        SDL_SetRenderScale(ren, 4, 4);
+        float lx = (LW / 4.0f - (float)(sizeof logo - 1) * CH) / 2;
+        for (int i = 0; logo[i]; i++) {
+            char c[2] = {logo[i], 0};
+            float wob = SDL_sinf(t * 3.0f + (float)i * 0.55f) * 2.5f;
+            text(ren, lx + (float)i * CH + 0.5f, 6 + wob + 0.5f, 0x000000u, c);        /* shadow */
+            text(ren, lx + (float)i * CH, 6 + wob, rainbow(t * 2.0f + (float)i * 0.45f), c);
+        }
+        SDL_SetRenderScale(ren, 2, 2);
+        static const char sub[] = "- TRAINER +4 -";
+        text(ren, (LW / 2.0f - (float)(sizeof sub - 1) * CH) / 2, 39,
+             ((int)(t * 4) & 1) ? C_GOLD : C_VALUE, sub);
+        SDL_SetRenderScale(ren, 1, 1);
+
+        /* the keys, in the launcher's panel */
+        frame(ren, panel, C_PANEL, C_GOLD);
+        SDL_FRect inner = {panel.x + 3, panel.y + 3, panel.w - 6, panel.h - 6};
+        colour(ren, 0x5A4820u);
+        SDL_RenderRect(ren, &inner);
+        for (int i = 0; i < 5; i++) {
+            float y = panel.y + 14 + (float)i * 16;
+            text(ren, panel.x + 22, y, C_GOLD, keys[i][0]);
+            text(ren, panel.x + 54, y, C_TEXT, keys[i][1]);
+        }
+        text(ren, panel.x + 22, panel.y + 96, C_DIM, "ON A MACBOOK HOLD FN FOR THE F KEYS");
+        Box b = button(ren, ok.x, ok.y, ok.w, "OK", inside(ok, mx, my), 1);
+        (void)b;
+
+        /* the sine scroller */
+        SDL_SetRenderScale(ren, 2, 2);
+        int n = (int)sizeof scroll - 1;
+        float pos = t * 70.0f;                         /* pixels at scale 2 */
+        int first = (int)(pos / CH);
+        float off = SDL_fmodf(pos, (float)CH);
+        for (int i = 0; i <= LW / 2 / CH + 1; i++) {
+            char c[2] = {scroll[(first + i) % n], 0};
+            if (c[0] == ' ') continue;
+            float x = (float)i * CH - off;
+            float y = 168 + SDL_sinf(t * 4.0f + x * 0.045f) * 9.0f;
+            text(ren, x, y, rainbow(x * 0.03f + t * 3.0f), c);
+        }
+        SDL_SetRenderScale(ren, 1, 1);
+
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+        const char *aq = SDL_getenv("SUP_TRAINER_AUTOCLOSE");   /* tests */
+        if (aq && SDL_GetTicks() - t0 > (Uint64)SDL_atoi(aq)) done = 1;
+    }
+
+    SDL_SetRenderLogicalPresentation(ren, lw, lh, lmode);
+    SDL_SetRenderScale(ren, sx, sy);
+    SDL_SetRenderDrawBlendMode(ren, bm);
+    SDL_SetRenderTarget(ren, target);
+    (void)win;
 }
 
 static int data_ok(const char *dir, char *why, size_t n)
@@ -691,7 +836,7 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         b = button(ren, V + 148, y, 64, s->trainer ? "ON" : "OFF", hv(V + 148, y, 64, 16, mx, my), 1);
         if (CLICKED(b)) {
             s->trainer = !s->trainer;
-            if (s->trainer) trainer_help(win);
+            if (s->trainer) trainer_help(win, ren);
         }
         text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
         y += 24;

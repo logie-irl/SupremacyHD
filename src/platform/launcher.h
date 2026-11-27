@@ -48,8 +48,9 @@ int  settings_save(const Settings *s, const char *path);
 
 /* 1 = PLAY NEW GAME, 2 = LOAD SAVED GAME (s->load_slot), 0 = the window was
  * closed. The saves are SSG1-SSG4 in <base>save. */
-/* The trainer's keys, in a box with an OK button (shown when the trainer is switched on). */
-void trainer_help(SDL_Window *win);
+/* The trainer's keys on a cracktro-style screen with an OK button (shown when
+ * the trainer is switched on), drawn with `ren`, whose state is restored. */
+void trainer_help(SDL_Window *win, SDL_Renderer *ren);
 
 int  launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *base);
 

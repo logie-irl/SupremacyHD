@@ -273,7 +273,7 @@ static int app_event(App *a, const SDL_Event *ev)
             a->trainer = !a->trainer;
             if (!a->trainer) a->peace = 0;      /* run_game switches peace off in the game */
             app_title(a);
-            if (a->trainer) trainer_help(a->win);   /* what the keys do, with an OK button */
+            if (a->trainer) trainer_help(a->win, a->ren);   /* what the keys do, with an OK button */
         }
         return 1;
     }
@@ -1079,6 +1079,7 @@ int main(int argc, char **argv)
         if (a.hires_loaded) app_apply_display(&a);
     }
     a.scanlines = scanlines;
+    if (SDL_getenv("SUP_SHOW_TRAINER")) trainer_help(a.win, a.ren);   /* tests: the trainer screen */
     a.trainer = trainer;
     app_title(&a);
     SDL_AudioStream *audio = NULL;
