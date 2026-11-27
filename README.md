@@ -1,39 +1,76 @@
-# Supremacy
+# Supremacy HD for macOS
 
-A native port of **Supremacy: Your Will Be Done** (Probe Software / Virgin
-Mastertronic, 1990), the Amiga strategy game, to modern systems:
+A native macOS port of **Supremacy: Your Will Be Done** (Probe Software /
+Virgin Mastertronic, 1990), the Amiga strategy game, for **macOS 27.x**
+(tested on Apple Silicon).
 
-- **Windows** 10 and 11 (64-bit)
-- **Linux** (tested on Ubuntu 24.04)
-- **AmigaOS 4.1** Final Edition (PowerPC)
-- **macOS** 27.x (tested on Apple Silicon; added in this fork, see [Building from source](#building-from-source))
+The game is a translation of the original Amiga program into C, running on
+[SDL 3](https://www.libsdl.org/). It plays exactly like the Amiga original as
+the WHDLoad install (V1.1) runs it: the same rules, the same random numbers,
+the same screens, sound and music, including the intro, the four victory
+sequences and the defeat sequence. On top of that it adds modern display
+options, hi-res pictures, optional bug fixes and a trainer.
 
-The port is a translation of the original Amiga program into portable C, with
-a new platform layer built on [SDL 3](https://www.libsdl.org/). It plays
-exactly like the Amiga original as the WHDLoad install (V1.1) runs it: the
-same rules, the same random numbers, the same screens, sound and music,
-including the intro, the four victory sequences and the defeat sequence.
+There are two apps, built from the same source:
+
+- **SuperMac.app**: the game as the original looked.
+- **SupremacyHD.app**: the same game with hi-res, smoothed artwork (on by
+  default, switchable in the launcher), with its own settings and saved games.
 
 > **You need your own copy of the game.** This repository contains none of
-> the original's code, graphics, sound, music or text (the program icons,
-> converted from the game's icon, are the only exception; see
-> [Licence](#licence)). The program reads everything else from your copy
-> when it starts. See [Getting the game data](#getting-the-game-data).
+> the original's code, graphics, sound, music or text (the program icon,
+> converted from the game's icon, is the only exception; see
+> [Licence](#licence)). The game reads everything else from your copy.
+> See [Getting the game data](#getting-the-game-data).
 
 ## Contents
 
+- [Quick start](#quick-start)
 - [Getting the game data](#getting-the-game-data)
 - [Playing](#playing)
-- [What the port adds for modern systems](#what-the-port-adds-for-modern-systems)
-- [Building from source](#building-from-source)
+- [Display options](#display-options)
+- [Supremacy HD (hi-res pictures)](#supremacy-hd-hi-res-pictures)
+- [Trainer](#trainer)
+- [Bug fixes](#bug-fixes)
+- [Building](#building)
+- [What the port does](#what-the-port-does)
 - [Testing](#testing)
 - [Project layout](#project-layout)
 - [Licence](#licence)
-- [Acknowledgements and third-party tools](#acknowledgements-and-third-party-tools)
+- [Acknowledgements](#acknowledgements)
+
+## Quick start
+
+Install [Homebrew](https://brew.sh/), then in Terminal:
+
+```sh
+brew install cmake sdl3
+git clone https://github.com/logie-irl/SupremacyHD.git
+cd SupremacyHD
+```
+
+Put your extracted game files in a folder called `SupremacyData` inside the
+repository (see [Getting the game data](#getting-the-game-data)), then build
+either app:
+
+```sh
+sh tools/make_hd_app.sh                    # SupremacyHD.app (hi-res pictures)
+```
+
+or
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app
+```
+
+Drag the app to Applications and open it. The game files are inside the app,
+so it needs nothing else. **An app with the game's files inside is for your
+own use: never share or publish it.**
 
 ## Getting the game data
 
-The port needs the twelve data files of the Amiga version (`GAM1`, `GAM2`,
+The game needs the twelve data files of the Amiga version (`GAM1`, `GAM2`,
 `INT1`, `INT2`, `Main`, `WIN0` to `WIN3`, `WIN.`, `WINM` and `DIEM`). The
 launcher can extract them for you from either of these:
 
@@ -44,197 +81,180 @@ launcher can extract them for you from either of these:
 Plain ADF disk images of cracked releases do **not** work: their files are
 packed or patched.
 
+If you build an app without the game files inside, the launcher asks for
+them the first time: press **EXTRACT FROM WHDLOAD .LHA/.ZIP OR .IPF DISKS**
+and pick your archive or disk images, or **BROWSE** to a folder that already
+holds the files.
+
 ## Playing
 
-1. Start the program (`supremacy.exe` on Windows, `supremacy` elsewhere). With
-   no command-line arguments it opens the **launcher**.
-2. The first time, press **EXTRACT FROM WHDLOAD .LHA/.ZIP OR .IPF DISKS** and
-   pick your archive (or one or both IPF disks). The files are written to a
-   folder called `SupremacyData` next to the program. If you already have the
-   files, press **BROWSE** and pick their folder instead.
-3. Press **PLAY NEW GAME**.
+Open the app. The **launcher** comes first, with the thinking man from the
+intro behind the options (taken from your own game files). Press
+**PLAY NEW GAME**, or **LOAD SAVED GAME** to carry on a saved game.
 
-If your system cannot show a file picker (on Linux this needs a desktop
-portal or `zenity`), the launcher says so. Click the **Game data folder**
-field and type the full path of your archive or data folder instead; for an
-archive, an **EXTRACT THE GAME FILES** button appears.
-
-### The launcher
-
-When the game data folder is valid, the launcher shows the thinking man from
-the intro behind the options. The picture is taken from your own `INT1` and
-`INT2` at run time; nothing of the game is bundled with the program.
+### Launcher settings
 
 | Setting | What it does |
 |---|---|
-| Game data folder | Where the game's files are (BROWSE, EXTRACT). |
 | Intro | On: the original title, music and opponent selection. Off: start straight away against the opponent chosen below it. |
 | Game speed | Normal (the original speed, 47 game passes a second) up to twice as fast. |
 | Window size | Whole multiples of 320 x 200, as large as your screen allows. |
 | Full screen | Start in full screen. |
-| Display | **Pixel**: sharp square pixels, whole-number scaling. **Smooth**: fills the window at any size and stays sharp. **4:3**: the Amiga monitor's shape (its pixels were taller than wide), so the picture is 320x240. F12 cycles them in the game. |
-| Scanlines | Darken the lower part of every picture line, like a CRT. Needs a window of 2x or larger; F10 switches it in the game. |
-| Trainer | Turn the cheat keys F5-F7 and F9 on (see Controls); F8 switches it in the game. |
-| Bug fixes | Fix the original game's bugs (see "Bug fixes" below). Off by default: the game then plays exactly as the original did. |
-| Replay a session log | Play a recorded session again (see below), then carry on playing. |
-| Load saved game | Continue one of the games saved from the in-game disk menu. |
-
-Settings are kept in `supremacy.cfg` next to the program.
+| Display | Pixel, Smooth or 4:3 (see [Display options](#display-options)). |
+| HD pictures | SupremacyHD only: hi-res artwork on or off. |
+| Scanlines | CRT-style scanlines. |
+| Trainer | The cheat keys (see [Trainer](#trainer)). |
+| Bug fixes | Fix the original game's bugs (see [Bug fixes](#bug-fixes)). Off by default. |
+| Replay a session log | Play a recorded session again, then carry on playing. |
 
 ### Controls
 
 The mouse does everything, as in the original: the **left button** selects,
 the **right button** leaves a screen. Ship and planet names are typed on the
-keyboard (letters, digits, space and `- = ; , . /`). **Backspace** or
-**Delete** erases, **Enter** accepts and **Esc** cancels. As in the WHDLoad
-version, game time stops while you type a name.
+keyboard (letters, digits, space and `- = ; , . /`). **Delete** erases,
+**Return** accepts and **Esc** cancels. Game time stops while you type a name.
+
+On a MacBook, hold **Fn** for the F keys.
 
 | Key | Action |
 |---|---|
-| F11 or Alt+Enter | Switch between window and full screen |
-| F10 | Scanlines on or off |
+| F11 or Option+Return | Window or full screen |
 | F12 | Display: Pixel, Smooth, 4:3 |
-| F8 | Trainer on or off (off by default; the window title says when it is on; also a launcher setting or `--trainer`) |
-| F9 | With the trainer on, peace on or off: the enemy sends no attacks while it is on, and enemy forces already on your planets are cleared when you switch it on. Switching the trainer off with F8 also ends peace |
-| F5 / F6 / F7 | With the trainer on, cheats (not in the original): +100,000 credits on each of your planets / fill food, minerals, fuels and energy to 30,000 / double the population and set morale to 100. On a Mac laptop hold Fn. Never during a replay |
+| F10 | Scanlines on or off |
+| F8 | Trainer on or off |
+| F5, F6, F7, F9 | Trainer cheats (see [Trainer](#trainer)) |
 | Close the window | Quit (save first from the in-game disk menu) |
 
-### Saved games and logs
+### Saved games, settings and logs
 
-- The in-game disk menu's four save slots are the files `SSG1` to `SSG4` in a
-  folder called `save` next to the program. They use the same format as the
-  WHDLoad version's saves.
-- Every session writes `supremacy.log` next to the program: the opponent, the
-  random seed and every click and key press. **Replay a session log** plays it
-  back exactly, which makes a bug easy to reproduce. Please attach the log
-  when you report a problem.
+Everything is kept in your Library, so the app itself is never changed:
+
+- **SuperMac:** `~/Library/Application Support/Supremacy/`
+- **SupremacyHD:** `~/Library/Application Support/SupremacyHD/`
+
+That folder holds:
+
+- `supremacy.cfg`, the launcher settings;
+- `save/SSG1` to `SSG4`, the in-game disk menu's four save slots (the same
+  format as the WHDLoad version's saves);
+- `supremacy.log`, a record of the last session: the opponent, the random
+  seed and every click and key press. **Replay a session log** plays it back
+  exactly, which makes a problem easy to reproduce.
 
 ### Command line
 
+The program inside the app can also be started from Terminal:
+
 ```
 supremacy <data folder> [options]
-  --opponent N   0-3: skip the intro and play against this opponent
-  --seed S       the game's random seed (skips the intro)
-  --no-intro     start the game at once
-  --speed P      game passes per second (default 47)
-  --scale N      window size: N x 320 by N x 200
-  --fullscreen   start in full screen
-  --display N    0 pixel (default), 1 smooth, 2 4:3 monitor shape (F12 switches)
-  --scanlines    CRT-style scanlines (F10 switches; needs a window of 2x or larger)
-  --trainer      the cheat keys F5-F7 work (F8 switches); see Controls
-  --fix-bugs     fix the original game's bugs; see "Bug fixes"
-  --log FILE     where to write the session log
-  --replay FILE  play a session log again, then carry on
-  --ending N     only play an end sequence: 0-3 a victory, -1 the defeat
+  --opponent N         0-3: skip the intro and play against this opponent
+  --seed S             the game's random seed (skips the intro)
+  --no-intro           start the game at once
+  --speed P            game passes per second (default 47)
+  --scale N            window size: N x 320 by N x 200
+  --fullscreen         start in full screen
+  --display N          0 pixel (default), 1 smooth, 2 4:3
+  --scanlines          CRT-style scanlines
+  --trainer            the cheat keys work (F8 switches)
+  --fix-bugs           fix the original game's bugs
+  --no-hires           ignore hi-res pictures
+  --export-pictures D  write the nine original pictures to folder D, then quit
+  --log FILE           where to write the session log
+  --replay FILE        play a session log again, then carry on
+  --ending N           only play an end sequence: 0-3 a victory, -1 the defeat
 ```
 
-## What the port adds for modern systems
+## Display options
 
-The game logic, screens and sound are translated routine by routine from the
-original 68000 program and checked against the original running in an
-emulator. Everything that touched the Amiga hardware directly has been
-replaced. These are the additions and changes:
+| Mode | What you see |
+|---|---|
+| **Pixel** | Sharp square pixels, scaled by whole numbers: the original look on a modern screen. |
+| **Smooth** | Fills the window at any size without uneven pixels, and stays sharp. |
+| **4:3** | The Amiga monitor's shape. Its pixels were taller than wide, so the picture is shown as 320 x 240 and the window is sized to match. |
 
-### Game logic
+**Scanlines** darken the lower part of each of the 200 picture lines, like a
+CRT. In Pixel mode they need a window of 2x or larger; in Smooth and 4:3 they
+always show.
 
-- **A C translation of the original code.** Every game routine (the daily
-  simulation, economy, combat, the enemy, events, craft and cargo) is
-  translated to portable C. The random-number generator is reproduced
-  exactly and every call to it is kept, so a game started with the same seed
-  plays out the same way as on an Amiga.
-- **The original state layout.** The game state is kept in the original's
-  7,000-byte block, big-endian, so saved games are compatible with the
-  WHDLoad version.
-- **The WHDLoad version's behaviour.** The port matches WHDLoad V1.1,
-  including its two fixes (a sound-number clamp and the "can't carry" craft
-  class test). Fixes for the original's other bugs are optional (the launcher's
-  **Bug fixes**, or `--fix-bugs`) and off by default, so the game plays as it
-  always did. See "Bug fixes" below.
-- **No original data in the program.** Tables and texts the game needs are
-  read from your own copy at start-up rather than built in.
+F12 cycles the display modes and F10 switches scanlines during the game.
 
-### Display and input
+## Supremacy HD (hi-res pictures)
 
-- **SDL 3 platform layer** instead of the Amiga's custom chips: the original
-  320 x 200, 32-colour screen is rebuilt in memory and drawn each frame.
-- **Window and full-screen modes** with whole-number scaling, so pixels stay
-  sharp; F11 or Alt+Enter switches at any time.
-- **Mouse mapping** from the window to the original 320 x 200 coordinates,
-  limited to the area the original pointer could reach.
-- **Quick clicks are never lost.** The original read the mouse once per game
-  pass; a press and release between two passes (a fast click, a touchpad tap)
-  is now held for one pass so the game always sees it.
-- **Keyboard text entry** through SDL's text input, filtered to the
-  characters the original accepts.
+SupremacyHD draws the game's nine full-screen pictures (main screen,
+statistics, shipyard, fleet, troops, cargo, surface, combat and title) in high
+resolution. Wherever the screen still shows the picture, the hi-res version
+is drawn. The text, icons, planet pictures and pointer that the game draws on
+top stay exactly as the game draws them.
 
-### Sound
+**Built in:** with nothing else installed, SupremacyHD upscales the pictures
+itself from your game files, the first time each screen is shown: pixel-art
+edge smoothing (Scale2x, three times), then softened, scaled to 1280 x 800,
+sharpened and given a little more colour. The **HD PICTURES** switch in the
+launcher turns it off for the original pixels.
 
-- **A Paula emulation.** The Amiga's four-channel sound chip is emulated
-  (sample playback, periods, volumes, looping) and mixed to stereo at
-  44.1 kHz.
-- **The original music and effects player**, translated from the 68000 code,
-  drives the emulated chip, as do the separate players for the intro and the
-  end sequences.
+**Your own pack (optional):** for an even more detailed look you can make a
+**hi-res pack** with an AI upscaler. A pack is a folder called `HiRes` with
+`main.png`, `statistics.png`, `shipyard.png`, `fleet.png`, `troops.png`,
+`cargo.png`, `surface.png`, `combat.png` and `title.png` (any size; 1280 x 800
+or larger in the 8:5 shape works best). A pack replaces the built-in
+pictures.
 
-### Timing
+1. Write the original pictures to `HiRes-original/`:
 
-- **A fixed game-pass clock.** On an Amiga the game's speed depended on the
-  machine. The port runs the game at the measured speed of the original
-  (47 passes a second) on any computer, and the launcher offers faster speeds
-  up to twice that.
+   ```sh
+   sh tools/upscale_pictures.sh
+   ```
 
-### Files and set-up
+   If `realesrgan-ncnn-vulkan` is installed, the script also upscales them
+   into `HiRes/` and you can skip step 2.
 
-- **A launcher** for the settings, saved games, replays and the data folder.
-- **A built-in extractor** that reads the game files straight from the
-  WHDLoad `.lha` (methods `-lh0-` and `-lh5-`, CRC checked), from a `.zip`
-  (stored and deflate, CRC checked) or from the original disks as IPF images
-  (the disks' custom track format is decoded as the WHDLoad installer reads
-  it). No Amiga, emulator or WHDLoad is needed. The extractor has been tested
-  with thousands of deliberately damaged files.
-- **Saved games as files** (`SSG1` to `SSG4`) instead of a save disk.
-- **Session logs and replays** for reproducing problems exactly.
-- **A version banner** (`$VER:` string) that names the source commit, shown
-  by AmigaOS's `Version` command and written to the session log.
+2. Install the free [Upscayl](https://upscayl.org) app. Open the
+   `HiRes-original` folder for batch upscaling, choose an illustration
+   (digital art) model, 4x scale and PNG, and save into a new `HiRes` folder.
+   The file names must stay `main.png`, `statistics.png` and so on. If
+   Upscayl added a suffix, this removes it:
 
-### Platform-specific
+   ```sh
+   cd HiRes && for f in *_upscayl_*.png; do mv "$f" "${f%%_upscayl_*}.png"; done; cd ..
+   ```
 
-- **AmigaOS 4:** file and folder pickers use ASL requesters and errors use
-  Intuition requesters; a Workbench icon; built with newlib.
-- **Windows:** a program icon; only `SDL3.dll` (and the `libiconv-2.dll` it
-  uses) are needed beside the program.
-- **Linux:** builds with the system compiler against SDL 3.
+3. Build the app again, with the pack inside:
 
-### Added in the macOS fork
+   ```sh
+   sh tools/make_hd_app.sh
+   ```
 
-These are not in the original game or in the upstream port:
+Instead of rebuilding, you can also put the `HiRes` folder in
+`~/Library/Application Support/SupremacyHD/HiRes`. `tools/make_hd_app.sh
+--data DIR --hires DIR` takes other folders. Packs are made from the game's
+artwork: keep them, and any app containing them, for your own use.
 
-- **macOS support**: it builds with CMake and Homebrew's SDL 3, and
-  `tools/make_macos_app.sh` packages a `Supremacy.app` (SDL 3 bundled, ad-hoc
-  signed). On macOS the settings, saved games and `SupremacyData` live in
-  `~/Library/Application Support/Supremacy/`, so the app bundle stays read-only.
-- **Scanlines** (optional): the lower part of each of the 200 picture lines is
-  darkened, drawn in window pixels so it stays sharp at any whole-number scale.
-- **A trainer** (optional, off by default): F5 adds 100,000 credits to each of
-  your planets, F6 fills food, minerals, fuels and energy to 30,000, and F7
-  doubles the population and sets morale to 100, and F9 stops the enemy
-  attacking at all (peace). It lives in
-  `src/core/cheats.c`, works on the player's planets only, and is disabled
-  during replays so they stay exact.
+## Trainer
 
-### Bug fixes
+Off by default. Switch it on in the launcher or with **F8** during the game;
+the window title says when it is on. Cheats are never applied during a
+replay.
+
+| Key | Effect |
+|---|---|
+| F5 | +100,000 credits on each of your planets |
+| F6 | Food, minerals, fuels and energy filled to 30,000 on each of your planets |
+| F7 | Population doubled (up to 30,000) and morale set to 100 |
+| F9 | Peace on or off: the enemy sends no attacks, and enemy forces already on your planets are cleared when you switch it on. Turning the trainer off also ends peace |
+
+## Bug fixes
 
 Switch on **Bug fixes** in the launcher (or start with `--fix-bugs`) to fix
 the original game's bugs. It is off by default, so the game plays exactly as
-the original did. Bug fixes are always off while a session log is replayed, so
-logs recorded without them stay exact (a log recorded with them on will drift,
-because the log does not store the setting). Saved games work with either
-setting. The fixes (each is marked in the source, in `craft.c`, `combat.c`, `enemy.c`, `events.c` and `day.c`):
+the original did. Bug fixes are always off while a session log is replayed,
+so recorded logs stay exact. Saved games work with either setting. Each fix
+is marked in the source (`craft.c`, `combat.c`, `enemy.c`, `events.c` and
+`day.c`).
 
 | Where | The bug | With the fix |
 |---|---|---|
-| Craft: launch, scrap, format | When a craft is in none of a planet's dock slots, slot 3 is cleared anyway, throwing out whatever is docked there (for example after formatting with a processor sitting on a surface) | A slot is cleared only if it holds the craft |
-| Craft: launch | Launching a nuclear craft such as a solar satellite takes 100 fuel it does not have, so its tank wraps to 65,436 (and scrapping it later wraps the planet's fuel) | No fuel is taken from nuclear craft |
+| Craft: launch, scrap, format | When a craft is in none of a planet's dock slots, slot 3 is cleared anyway, throwing out whatever is docked there | A slot is cleared only if it holds the craft |
+| Craft: launch | Launching a nuclear craft such as a solar satellite takes 100 fuel it does not have, so its tank wraps to 65,436 | No fuel is taken from nuclear craft |
 | Craft: launch, dock | Slots are used on the planet shown on the fleet screen, not on the craft's own planet | The craft's own planet is used |
 | Craft: stop | STOP on an atmosphere processor that is formatting leaves it set to format, so the planet is formatted although the processor never arrives | STOP does nothing for a processor that is formatting |
 | Craft: transit | A craft in transit with 0 days left is never processed again, so such a format never finishes | It arrives on that pass |
@@ -242,8 +262,8 @@ setting. The fixes (each is marked in the source, in `craft.c`, `combat.c`, `ene
 | Combat | After a conquest, the +7 training bonus goes to platoons on the planet on show instead of the winning platoons | It goes to the winners |
 | Combat | A conquest made as the combat screen opens writes the owner, name and captured craft to the wrong planet | It writes to the conquered planet |
 | Enemy attack | The enemy's target search reads one record past the end of the planet table | The search stops at the last planet |
-| Events: ships destroyed | The planet's dock slot is not cleared (the wrong address is tested), so it keeps pointing at a destroyed craft | The slot is cleared |
-| War tension | If the enemy owns every planet, the display reads past the end of its table and starts a stray sound | The last real entry is used (full red, no new sound) |
+| Events: ships destroyed | The planet's dock slot is not cleared, so it keeps pointing at a destroyed craft | The slot is cleared |
+| War tension | If the enemy owns every planet, the display reads past the end of its table and starts a stray sound | The last real entry is used |
 | Events: aracno-locusts | The event tests for the year 1014, which never comes, so it never happens | It happens in 2019 (the original's intended year is unknown) |
 
 A few other oddities are left as the original game plays them, because they
@@ -265,164 +285,60 @@ platoons stationed there:
   `(yours - enemy) / yours` of their number, and the enemy force falls by 2%
   of your strength; when it runs out the planet is yours.
 
-## Building from source
+## Building
 
-You need a C compiler, [CMake](https://cmake.org/) 3.20 or later and SDL 3.
-The steps below start from nothing on each system. Type the commands in a
-terminal, one line at a time.
+You need macOS 27.x, the Xcode command-line tools (`xcode-select --install`),
+[Homebrew](https://brew.sh/), and then `brew install cmake sdl3`.
 
-First get the source code:
+| Command | Result |
+|---|---|
+| `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build` | The game program, `build/supremacy` |
+| `sh tools/make_macos_app.sh` | `Supremacy.app`, asking for the game data on first start |
+| `sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app` | `SuperMac.app` with your game files inside |
+| `sh tools/make_hd_app.sh` | `SupremacyHD.app` with your game files (and `HiRes` pack, if there is one) inside |
 
-```sh
-git clone https://github.com/derfsss/Supremacy.git
-cd Supremacy
-```
+The app's name follows its file name. Each app carries its own copy of SDL 3
+and is ad-hoc signed, which is enough to run it on the Mac that built it. If
+macOS refuses to open it the first time, right-click the app, choose
+**Open**, then **Open** again.
 
-### Windows (MSYS2)
+`make_macos_app.sh` also takes `--with-hires DIR` to put a pack in any app.
+SupremacyHD is the same source built with `-DSUP_HD=ON` (into `build-hd`).
 
-1. Install [MSYS2](https://www.msys2.org/) and open the **MSYS2 UCRT64**
-   terminal from the Start menu.
-2. Update MSYS2 (the terminal may ask you to close it and open it again; if so,
-   run the command a second time):
+## What the port does
 
-   ```sh
-   pacman -Syu
-   ```
+The game logic, screens and sound are translated routine by routine from the
+original 68000 program and checked against the original running in an
+emulator. Everything that touched the Amiga hardware directly has been
+replaced:
 
-3. Install the compiler, the build tools, Git and SDL 3:
-
-   ```sh
-   pacman -S --needed git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake \
-     mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-sdl3
-   ```
-
-4. Build (from the `Supremacy` folder):
-
-   ```sh
-   cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-   cmake --build build
-   ```
-
-5. The program is `build/supremacy.exe`. To run it outside the MSYS2
-   terminal, copy `SDL3.dll` and `libiconv-2.dll` from `C:\msys64\ucrt64\bin`
-   into the same folder.
-
-### Linux (Ubuntu and Debian)
-
-Ubuntu 25.04 and later, and Debian 13 and later, have an SDL 3 package:
-
-```sh
-sudo apt update
-sudo apt install build-essential cmake ninja-build git pkg-config libsdl3-dev zenity
-```
-
-On older releases such as Ubuntu 24.04, build SDL 3 from source first. These
-commands install the libraries SDL needs for graphics (X11 and Wayland) and
-sound (ALSA, PulseAudio and PipeWire), and `zenity` for the launcher's
-file pickers, then build and install SDL 3:
-
-```sh
-sudo apt update
-sudo apt install build-essential cmake ninja-build git pkg-config \
-  libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev \
-  libxfixes-dev libxkbcommon-dev libwayland-dev wayland-protocols libdecor-0-dev \
-  libegl1-mesa-dev libgl1-mesa-dev libasound2-dev libpulse-dev \
-  libpipewire-0.3-dev libdbus-1-dev libudev-dev zenity
-
-git clone --depth 1 --branch release-3.4.18 https://github.com/libsdl-org/SDL.git
-cmake -S SDL -B SDL/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build SDL/build
-sudo cmake --install SDL/build
-```
-
-Then build the game (from the `Supremacy` folder):
-
-```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-./build/supremacy
-```
-
-If the program cannot find `libSDL3.so.0` when it starts, run
-`sudo ldconfig` once and try again.
-
-### macOS (27.x, tested on Apple Silicon)
-
-Install [Homebrew](https://brew.sh/), then:
-
-```sh
-brew install cmake sdl3
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-./build/supremacy                  # runs next to the build; SupremacyData goes in build/
-sh tools/make_macos_app.sh         # optional: makes Supremacy.app
-```
-
-`Supremacy.app` bundles SDL3 and is ad-hoc signed. When run from the app, the
-settings, saved games and `SupremacyData` live in
-`~/Library/Application Support/Supremacy/`.
-
-To make an app with your game files inside it, so it runs without
-extracting anything, point the script at your extracted `SupremacyData` folder
-(the 12 game files):
-
-```sh
-sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app
-```
-
-That makes one self-contained `SuperMac.app` (the name is whatever you give
-as the last argument): drag it to Applications and it needs nothing else.
-
-The files are copied into the app and the launcher uses them straight away:
-it no longer shows the game data folder at all. Saves and settings stay in
-`~/Library/Application Support/Supremacy/`. **This app contains the game's
-copyrighted data: keep it for your own use, and never share or publish it.**
-
-### SupremacyHD (hi-res pictures)
-
-SupremacyHD is the same game as its own app (its own settings and saved games in
-`~/Library/Application Support/SupremacyHD/`) that draws the nine full-screen pictures
-(main screen, statistics, shipyard, fleet, troops, cargo, surface, combat, title) from a
-**hi-res pack**: a `HiRes` folder holding `main.png`, `statistics.png`, `shipyard.png`,
-`fleet.png`, `troops.png`, `cargo.png`, `surface.png`, `combat.png` and `title.png` (any size;
-1280x800 or larger, 8:5 shape). Wherever the screen still shows the backdrop, the hi-res
-picture is drawn; the text, icons, planet picture and pointer the game draws on top stay as
-the game draws them. With no pack, SupremacyHD upscales the pictures itself when the game starts (pixel-art edge smoothing, x8, softened and sharpened to 1280x800), so it is HD out of the box; a pack you make replaces the built-in pictures. The launcher's **HD PICTURES** switch turns it on and off.
-
-    sh tools/upscale_pictures.sh            # writes the originals to HiRes-original/ and,
-                                            # with realesrgan-ncnn-vulkan installed, HiRes/
-    sh tools/make_hd_app.sh                 # builds SupremacyHD.app with SupremacyData + HiRes inside
-
-No command-line upscaler? Install the free Upscayl app, open `HiRes-original/`, choose a 4x
-illustration model, save the PNGs into `HiRes/` with the same names, then run `make_hd_app.sh`.
-Or put the folder in `~/Library/Application Support/SupremacyHD/HiRes` and the app finds it.
-`--export-pictures DIR` writes the originals, `--no-hires` ignores a pack, and the launcher's
-HI-RES PICTURES switch does the same. The packs are made from the game's artwork: keep them,
-and any app containing them, for your own use.
-
-## AmigaOS 4 (cross-compiled)
-
-The AmigaOS 4 version is built on Windows, macOS or Linux with a
-cross-compiler in [Docker](https://www.docker.com/). The script uses the
-[`walkero/amigagccondocker:os4-gcc15`](https://hub.docker.com/r/walkero/amigagccondocker)
-image, which contains GCC 15 for AmigaOS 4, newlib and SDL 3.
-
-1. Install Docker and start it.
-2. From the `Supremacy` folder, in a Bash terminal (on Windows: MSYS2 or Git
-   Bash):
-
-   ```sh
-   bash tools/build_os4.sh
-   ```
-
-3. The result is `build-os4/supremacy.stripped`. Copy it to your Amiga as
-   `supremacy`, together with `build-os4/supremacy.info` (the icon), and make
-   it executable (`Protect supremacy +e`).
+- **The game logic** (daily simulation, economy, combat, the enemy, events,
+  craft and cargo) is portable C. The random-number generator is reproduced
+  exactly, so a game started with the same seed plays out the same way as on
+  an Amiga.
+- **The game state** is kept in the original's 7,000-byte big-endian block,
+  so saved games are compatible with the WHDLoad version.
+- **The WHDLoad version's behaviour**, including its two fixes and its
+  removal of the original's disk checks (the copy protection).
+- **Display:** the original 320 x 200, 32-colour screen, including its
+  per-line colour changes (the copper), is rebuilt in memory each frame and
+  drawn with SDL 3, in the display modes above.
+- **Input:** the mouse is mapped to the original's 320 x 200 coordinates, and
+  quick clicks between two game passes are never lost.
+- **Sound:** the Amiga's four-channel Paula chip is emulated and mixed to
+  stereo at 44.1 kHz, driven by the original music and effects players.
+- **Timing:** the game runs at the original's measured speed of 47 passes a
+  second on any Mac, with faster speeds in the launcher.
+- **Files:** a launcher, a built-in extractor for the WHDLoad `.lha`, `.zip`
+  and the original IPF disks, saved games as files, and session logs with
+  exact replays.
+- **No original data in the program:** tables, texts, pictures and sounds
+  are read from your copy at start-up.
 
 ## Testing
 
-`tools/fuzz` holds tests that build without SDL and run under
-AddressSanitizer and UndefinedBehaviorSanitizer (Linux or WSL with GCC):
+`tools/fuzz` holds tests that build without SDL and run with the address and
+undefined-behaviour sanitizers:
 
 | Program | What it checks |
 |---|---|
@@ -432,9 +348,9 @@ AddressSanitizer and UndefinedBehaviorSanitizer (Linux or WSL with GCC):
 | `fuzz_extract` | The extractor, fed thousands of damaged archives and disk images. |
 
 ```sh
-sh tools/fuzz/build_fuzz.sh
+FUZZ_CC=clang sh tools/fuzz/build_fuzz.sh
 mkdir -p build-fuzz/logs
-./build-fuzz/fuzz_game path/to/SupremacyData build-fuzz/logs 10 100000 1
+./build-fuzz/fuzz_game SupremacyData build-fuzz/logs 10 100000 1
 ```
 
 Each program describes its arguments at the top of its source file.
@@ -443,14 +359,13 @@ Each program describes its arguments at the top of its source file.
 
 | Path | Contents |
 |---|---|
-| `src/core` | The game logic: state, daily simulation, economy, craft, combat, enemy, events, and the optional cheats. No platform code. |
+| `src/core` | The game logic: state, daily simulation, economy, craft, combat, enemy, events, and the trainer cheats. No platform code. |
 | `src/ui` | The screens, text and graphics routines, the intro and the end sequences. |
-| `src/sound` | The music and effects player and the Paula emulation. |
+| `src/sound` | The music and effects players and the Paula emulation. |
 | `src/assets` | Loading and unpacking the original data files. |
-| `src/platform` | The SDL 3 front end, the launcher, the extractor and the AmigaOS 4 requesters. |
-| `cmake` | The AmigaOS 4 toolchain file and the version-banner script. |
-| `assets/icons` | The Windows and Workbench icons. |
-| `tools` | The AmigaOS 4 build script and the tests. |
+| `src/platform` | The SDL 3 front end, the launcher, the extractor and the hi-res pictures. |
+| `assets/icons` | The app icon. |
+| `tools` | The app build scripts, the picture upscaling script and the tests. |
 
 Comments in the code give the original's 68000 addresses (for example
 `$4748`) for the routines and data they correspond to.
@@ -462,53 +377,30 @@ The source code in this repository is released under the
 
 Supremacy itself (its code, graphics, sound, music and text) remains the
 property of its copyright holders and is **not** covered by this licence.
-This project is not affiliated with or endorsed by them. The icons in
-`assets/icons` are converted from the game icon of the WHDLoad install and
-are likewise not covered by the MIT Licence.
+This project is not affiliated with or endorsed by them. The icon in
+`assets/icons` is converted from the game icon of the WHDLoad install and is
+likewise not covered by the MIT Licence. Apps built with the game's files or
+hi-res pictures inside contain that copyrighted material: keep them for your
+own use.
 
-## Acknowledgements and third-party tools
-
-**The original game**
+## Acknowledgements
 
 - *Supremacy: Your Will Be Done* © 1990 Virgin Mastertronic, published by
   Melbourne House. System software by David Perry, graphics by Nick Bruty,
   design and concept by Probe Software.
-- The Supremacy WHDLoad install (V1.1) by Dark Angel, whose behaviour this
-  port follows, and [WHDLoad](https://www.whdload.de/) by Bert Jahn.
+- This macOS port is built on the C translation of the game by
+  [derfsss](https://github.com/derfsss/Supremacy) (MIT Licence).
+- The Supremacy WHDLoad install (V1.1) by Dark Angel, whose behaviour the
+  game follows, and [WHDLoad](https://www.whdload.de/) by Bert Jahn.
 - The [Software Preservation Society](http://www.softpres.org/), whose IPF
   disk images preserve the original disks.
-
-**Libraries used by the program**
-
 - [SDL 3](https://www.libsdl.org/) (zlib licence), for graphics, sound and
-  input on every platform.
-- [GNU libiconv](https://www.gnu.org/software/libiconv/) (LGPL), used by
-  the Windows build of SDL 3.
+  input.
 - The LZSS method used to unpack the game files is Haruhiko Okumura's; the
-  `-lh5-` method of LHA is Haruyasu Yoshizaki's.
-
-**Tools used to build, analyse and test the port**
-
-- [GCC](https://gcc.gnu.org/), [CMake](https://cmake.org/) and
-  [Ninja](https://ninja-build.org/).
-- [MSYS2](https://www.msys2.org/), for the Windows build.
-- The [adtools](https://github.com/sba1/adtools) GCC cross-compiler for
-  AmigaOS 4, via the
-  [walkero/amigagccondocker](https://github.com/walkero-gr/amigagccondocker)
-  Docker image, and [Docker](https://www.docker.com/).
-- [Ghidra](https://ghidra-sre.org/) (National Security Agency), for
-  analysing the original program.
-- [Capstone](https://www.capstone-engine.org/), for disassembling 68000
-  code.
-- [machine68k](https://github.com/cnvogelg/machine68k) by Christian
-  Vogelgsang, built on the [Musashi](https://github.com/kstenerud/Musashi)
-  68000 emulator by Karl Stenerud, for running the original program to check
-  the port against it.
-- [Python](https://www.python.org/) and [Pillow](https://python-pillow.org/),
-  for the analysis and checking scripts.
-- [QEMU](https://www.qemu.org/), for testing on AmigaOS 4.1 (Hyperion
-  Entertainment).
-- [WSL](https://learn.microsoft.com/windows/wsl/) with Ubuntu, for testing
-  the Linux build.
+  `-lh5-` method of LHA is Haruyasu Yoshizaki's. The built-in picture
+  upscaler uses Scale2x by Andrea Mazzoleni.
+- [Upscayl](https://upscayl.org) and
+  [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN), suggested for making
+  hi-res packs.
 - [Claude Code](https://www.anthropic.com/claude-code) (Anthropic), the AI
   assistant used throughout the development of this port.
