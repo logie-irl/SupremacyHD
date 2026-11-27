@@ -50,6 +50,7 @@
 #include "intro.h"
 #include "launcher.h"
 #include "touch.h"
+#include "hires.h"
 #include "os4_dialog.h"
 #include "build_id.h"           /* SUP_VERSION, SUP_BUILD_ID, SUP_BUILD_DATE (cmake/build_id.cmake) */
 
@@ -162,6 +163,10 @@ typedef struct App {
     SDL_Renderer *ren;
     SDL_Texture *tex;
     SDL_Texture *mid;           /* the picture enlarged by whole numbers, for the smooth and 4:3 displays */
+    SDL_Texture *ovtex;         /* what the game drew over a hi-res backdrop (alpha 0 = backdrop shows) */
+    SDL_Texture *hi;            /* this frame's hi-res backdrop, or NULL */
+    const uint32_t *ov;         /* this frame's overlay pixels, 320 x 200 */
+    int hires_loaded;           /* a hi-res pack was found: the picture is always drawn through `mid` */
     int mid_w, mid_h;
     int scanlines;              /* 1: CRT-style scanlines (F10) */
     int trainer;                /* 1: the cheat keys work (F8) */
@@ -178,6 +183,7 @@ typedef struct App {
  * SMOOTH and 4:3 first enlarge the picture by whole numbers (5x in width, 5x or 6x in height) and
  * let the graphics card scale that smoothly, so the pixels stay sharp. */
 static int opt_display;
+static int opt_hires = 1;           /* hi-res picture packs on (--no-hires, the launcher) */
 #define DISPLAY_MODES 3
 static const char *const display_names[DISPLAY_MODES] = {"PIXEL", "SMOOTH", "4:3"};
 
@@ -186,7 +192,7 @@ static int display_height(int d) { return d == 2 ? 240 : 200; }       /* the pic
 static void app_apply_display(App *a)
 {
     if (!a->ren) return;
-    if (opt_display < 1) {
+    if (opt_display < 1 && !a->hires_loaded) {
         SDL_SetRenderLogicalPresentation(a->ren, 320, 200, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
         return;
     }
@@ -198,26 +204,36 @@ static void app_apply_display(App *a)
         a->mid_h = mh;
         if (a->mid) SDL_SetTextureScaleMode(a->mid, SDL_SCALEMODE_LINEAR);
     }
-    if (!a->mid) { opt_display = 0; app_apply_display(a); return; }           /* no render targets: stay sharp */
+    if (!a->mid) { opt_display = 0; a->hires_loaded = 0; app_apply_display(a); return; }   /* no render targets: stay sharp */
     SDL_SetRenderLogicalPresentation(a->ren, a->mid_w, a->mid_h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 }
+
+static int mid_on(const App *a) { return a->mid && (opt_display >= 1 || a->hires_loaded); }
 
 /* A window position -> a position in the 320x200 picture. */
 static void app_game_coords(App *a, float wx, float wy, float *lx, float *ly)
 {
     SDL_RenderCoordinatesFromWindow(a->ren, wx, wy, lx, ly);
-    if (opt_display >= 1 && a->mid) {
+    if (mid_on(a)) {
         *lx = *lx * 320.0f / (float)a->mid_w;
         *ly = *ly * 200.0f / (float)a->mid_h;
     }
 }
 
 /* The window title says when the trainer, and peace, are on. */
+#ifdef SUP_HD                           /* the separate SupremacyHD app (cmake -DSUP_HD=ON) */
+#define APP_TITLE "Supremacy HD"
+#define PREF_APP "SupremacyHD"
+#else
+#define APP_TITLE "Supremacy"
+#define PREF_APP "Supremacy"
+#endif
+
 static void app_title(App *a)
 {
-    SDL_SetWindowTitle(a->win, !a->trainer ? "Supremacy"
-                               : a->peace ? "Supremacy - TRAINER ON, PEACE (F5 F6 F7 F9)"
-                                          : "Supremacy - TRAINER ON (F5 F6 F7 F9)");
+    SDL_SetWindowTitle(a->win, !a->trainer ? APP_TITLE
+                               : a->peace ? APP_TITLE " - TRAINER ON, PEACE (F5 F6 F7 F9)"
+                                          : APP_TITLE " - TRAINER ON (F5 F6 F7 F9)");
 }
 
 /* The window as the game uses it (after the launcher, which set its own size). */
@@ -247,7 +263,7 @@ static int app_open(App *a, int scale, int fullscreen)
     SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
     fl |= SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 #endif
-    if (!SDL_CreateWindowAndRenderer("Supremacy", 320 * scale, display_height(opt_display) * scale, fl, &a->win, &a->ren)) {
+    if (!SDL_CreateWindowAndRenderer(APP_TITLE, 320 * scale, display_height(opt_display) * scale, fl, &a->win, &a->ren)) {
         fprintf(stderr, "window: %s\n", SDL_GetError());
         return -1;
     }
@@ -345,11 +361,28 @@ static void app_present(App *a, const uint32_t *px)
     const char *t = touch_take_toast();
     if (t) { a->toast = t; a->toast_until = SDL_GetTicks() + 1500; }
     int show_toast = a->toast && SDL_GetTicks() < a->toast_until;
-    if (opt_display >= 1 && a->mid) {
+    if (mid_on(a)) {
         /* the picture, enlarged by whole numbers, into the middle texture (scanlines and the
          * message are drawn there too, in its pixels); then that is scaled smoothly to the window */
         SDL_SetRenderTarget(a->ren, a->mid);
-        SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
+        if (a->hi && a->ov) {                       /* hi-res backdrop, then what the game drew over it */
+            if (!a->ovtex) {
+                a->ovtex = SDL_CreateTexture(a->ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 320, 200);
+                if (a->ovtex) {
+                    SDL_SetTextureScaleMode(a->ovtex, SDL_SCALEMODE_NEAREST);
+                    SDL_SetTextureBlendMode(a->ovtex, SDL_BLENDMODE_BLEND);
+                }
+            }
+            SDL_RenderTexture(a->ren, a->hi, NULL, NULL);
+            if (a->ovtex) {
+                SDL_UpdateTexture(a->ovtex, NULL, a->ov, 320 * 4);
+                SDL_RenderTexture(a->ren, a->ovtex, NULL, NULL);
+            } else {
+                SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
+            }
+        } else {
+            SDL_RenderTexture(a->ren, a->tex, NULL, NULL);
+        }
         if (a->scanlines) {
             float s = (float)a->mid_h / 200.0f, band = (float)(int)(s / 2.0f);
             SDL_SetRenderDrawBlendMode(a->ren, SDL_BLENDMODE_BLEND);
@@ -761,6 +794,24 @@ static int run_game(App *a, const GameData *gd, int opponent, uint32_t seed, dou
                             ui.arrow_x, ui.arrow_y, 7);
             draw_sprite(px, ui.colour, gd->mem, 0x59288u, ms.x, ms.y, 16);
         }
+        a->hi = NULL;
+        a->ov = NULL;
+        if (a->hires_loaded && opt_hires) {            /* a hi-res backdrop where the screen still shows the picture */
+            static Picture bgp;
+            static uint32_t bg_addr, bgpx[320 * 200], ovpx[320 * 200];
+            SDL_Texture *ht = hires_find(ui_last_picture);
+            if (ht && (bg_addr == ui_last_picture || picture_decode(gd, ui_last_picture, &bgp) == 0)) {
+                bg_addr = ui_last_picture;
+                int same = 0;
+                for (int k = 0; k < 320 * 200; k++) same += idx[k] == bgp.pixels[k];
+                if (same > 320 * 200 / 4) {            /* (a picture from another path leaves this stale) */
+                    render_copper(bgpx, bgp.pixels, ui.colour, ui.copper, gd->mem);
+                    for (int k = 0; k < 320 * 200; k++) ovpx[k] = px[k] == bgpx[k] ? 0 : (px[k] | 0xFF000000u);
+                    a->hi = ht;
+                    a->ov = ovpx;
+                }
+            }
+        }
         app_present(a, px);
         SDL_Delay(1);
         if (frames == 30 && SDL_getenv("SUP_GOTO")) {    /* tests: open a screen */
@@ -931,7 +982,7 @@ int main(int argc, char **argv)
     const char *data_dir = "SupremacyData";
     int opponent = 0, pictures = 0, ending = -2, intro = 1, scale = 3, fullscreen = 0, scanlines = 0, trainer = 0;
     double speed = 47.0;
-    const char *log_path = NULL, *replay_path = NULL;
+    const char *log_path = NULL, *replay_path = NULL, *export_dir = NULL;
     uint32_t seed = (uint32_t)time(NULL) * 2654435761u;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--opponent") && i + 1 < argc) { opponent = SDL_atoi(argv[++i]) & 3; intro = 0; }
@@ -940,6 +991,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = SDL_atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--scanlines")) scanlines = 1;
+        else if (!strcmp(argv[i], "--no-hires")) opt_hires = 0;
+        else if (!strcmp(argv[i], "--export-pictures") && i + 1 < argc) export_dir = argv[++i];
         else if (!strcmp(argv[i], "--display") && i + 1 < argc) { opt_display = SDL_atoi(argv[++i]); opt_display = SDL_clamp(opt_display, 0, DISPLAY_MODES - 1); }
         else if (!strcmp(argv[i], "--trainer")) trainer = 1;
         else if (!strcmp(argv[i], "--fix-bugs")) opt_fix_bugs = 1;
@@ -967,7 +1020,7 @@ int main(int argc, char **argv)
      * ~/Library/Application Support/Supremacy/ instead. */
     static char pref_base[1024];
     {
-        char *pref = SDL_GetPrefPath("Supremacy", "Supremacy");
+        char *pref = SDL_GetPrefPath("Supremacy", PREF_APP);
         if (pref) {
             SDL_strlcpy(pref_base, pref, sizeof pref_base);
             SDL_free(pref);
@@ -1012,6 +1065,7 @@ int main(int argc, char **argv)
         fullscreen = set.fullscreen;
         scanlines = set.scanlines;
         opt_display = SDL_clamp(set.display, 0, DISPLAY_MODES - 1);
+        opt_hires = set.hires;
         trainer = set.trainer;
         opt_fix_bugs = set.bugfixes;
         touch_set_mode(set.touch);
@@ -1048,7 +1102,21 @@ int main(int argc, char **argv)
             show_error(a.win, gd.error);
         return 1;
     }
+    if (export_dir) {
+        int n = hires_export(&gd, export_dir);
+        printf("%d pictures written to %s\n", n, export_dir);
+        SDL_Quit();
+        return n > 0 ? 0 : 1;
+    }
     if (!launched && app_open(&a, scale, fullscreen) != 0) return 1;
+    if (opt_hires) {                    /* hi-res picture pack: inside the app, then next to the settings, then in the data folder */
+        char d1[1200], d2[1200], d3[1200];
+        SDL_snprintf(d1, sizeof d1, "%sHiRes", SDL_GetBasePath() ? SDL_GetBasePath() : "");
+        SDL_snprintf(d2, sizeof d2, "%sHiRes", base ? base : "");
+        SDL_snprintf(d3, sizeof d3, "%s/HiRes", data_dir);
+        a.hires_loaded = hires_load(a.ren, d1, d2) > 0 || hires_load(a.ren, d3, NULL) > 0;
+        if (a.hires_loaded) app_apply_display(&a);
+    }
     a.scanlines = scanlines;
     a.trainer = trainer;
     app_title(&a);

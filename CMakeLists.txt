@@ -67,8 +67,9 @@ add_custom_target(build_id
           -DVERSION=${SUP_VERSION}
           -P ${CMAKE_SOURCE_DIR}/cmake/build_id.cmake
   BYPRODUCTS ${CMAKE_BINARY_DIR}/gen/build_id.h)
+option(SUP_HD "Build the separate SupremacyHD app (own settings folder, hi-res picture packs)" OFF)
 set(GAME_SOURCES src/platform/main.c src/platform/launcher.c src/platform/extract.c
-                 src/platform/os4_dialog.c src/platform/touch.c)
+                 src/platform/os4_dialog.c src/platform/touch.c src/platform/hires.c)
 if(AMIGAOS4)
   # The OS4 SDK has SDL3 (newlib) as a static library without a CMake config.
   add_executable(supremacy ${GAME_SOURCES})
@@ -142,4 +143,7 @@ endif()
 if(TARGET supremacy)
   add_dependencies(supremacy build_id)
   target_include_directories(supremacy PRIVATE ${CMAKE_BINARY_DIR}/gen)
+  if(SUP_HD)
+    target_compile_definitions(supremacy PRIVATE SUP_HD=1)
+  endif()
 endif()

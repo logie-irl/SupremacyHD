@@ -413,7 +413,29 @@ the sides. The trainer's cheat keys (F5-F9) need a keyboard connected to the
 phone. The iOS version has not been tested on a real phone yet: if something
 does not work, please report it.
 
-### AmigaOS 4 (cross-compiled)
+### SupremacyHD (hi-res pictures)
+
+SupremacyHD is the same game as its own app (its own settings and saved games in
+`~/Library/Application Support/SupremacyHD/`) that draws the nine full-screen pictures
+(main screen, statistics, shipyard, fleet, troops, cargo, surface, combat, title) from a
+**hi-res pack**: a `HiRes` folder holding `main.png`, `statistics.png`, `shipyard.png`,
+`fleet.png`, `troops.png`, `cargo.png`, `surface.png`, `combat.png` and `title.png` (any size;
+1280x800 or larger, 8:5 shape). Wherever the screen still shows the backdrop, the hi-res
+picture is drawn; the text, icons, planet picture and pointer the game draws on top stay as
+the game draws them. Without a pack it plays like normal, so a pack is optional.
+
+    sh tools/upscale_pictures.sh            # writes the originals to HiRes-original/ and,
+                                            # with realesrgan-ncnn-vulkan installed, HiRes/
+    sh tools/make_hd_app.sh                 # builds SupremacyHD.app with SupremacyData + HiRes inside
+
+No command-line upscaler? Install the free Upscayl app, open `HiRes-original/`, choose a 4x
+illustration model, save the PNGs into `HiRes/` with the same names, then run `make_hd_app.sh`.
+Or put the folder in `~/Library/Application Support/SupremacyHD/HiRes` and the app finds it.
+`--export-pictures DIR` writes the originals, `--no-hires` ignores a pack, and the launcher's
+HI-RES PICTURES switch does the same. The packs are made from the game's artwork: keep them,
+and any app containing them, for your own use.
+
+## AmigaOS 4 (cross-compiled)
 
 The AmigaOS 4 version is built on Windows, macOS or Linux with a
 cross-compiler in [Docker](https://www.docker.com/). The script uses the

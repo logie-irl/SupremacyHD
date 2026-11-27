@@ -7,6 +7,8 @@
 #   sh tools/make_macos_app.sh --with-data SupremacyData build SuperMac.app
 #                                         # one self-contained SuperMac.app with your game
 #                                         # files inside: drag it to Applications
+#   sh tools/make_macos_app.sh --with-hires HiRes ...   # also bundle a hi-res picture pack
+#   (SupremacyHD: see tools/make_hd_app.sh)
 #
 # The app carries its own copy of SDL3 and is ad-hoc signed, which is enough to run
 # it on the Mac that built it. Settings, saved games and the game data live in
@@ -18,10 +20,12 @@
 set -eu
 
 DATA=""
+HIRES=""
 POS=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --with-data) [ $# -ge 2 ] || { echo "--with-data needs a folder" >&2; exit 1; }; DATA=$2; shift 2 ;;
+    --with-hires) [ $# -ge 2 ] || { echo "--with-hires needs a folder" >&2; exit 1; }; HIRES=$2; shift 2 ;;
     *) POS="$POS $1"; shift ;;
   esac
 done
@@ -78,6 +82,13 @@ if [ -n "$DATA" ]; then
   echo "Game data bundled: this app is for your own use only, do not share it."
 fi
 
+if [ -n "$HIRES" ]; then
+  [ -d "$HIRES" ] || { echo "$HIRES is not a folder" >&2; exit 1; }
+  mkdir -p "$APP/Contents/Resources/HiRes"
+  cp "$HIRES"/* "$APP/Contents/Resources/HiRes/"
+  echo "Hi-res pictures bundled: for your own use only, do not share this app."
+fi
+
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -100,7 +111,9 @@ EOF
 
 # The app's name follows its file name (SuperMac.app is called "SuperMac").
 NAME=$(basename "$APP" .app)
-sed -e "s|<key>CFBundleName</key><string>Supremacy</string>|<key>CFBundleName</key><string>$NAME</string>|" \
+ID=$(echo "$NAME" | tr -cd "A-Za-z0-9" | tr "A-Z" "a-z")
+sed -e "s|io.github.supremacy-mac|io.github.supremacy-mac.$ID|" \
+    -e "s|<key>CFBundleName</key><string>Supremacy</string>|<key>CFBundleName</key><string>$NAME</string>|" \
     -e "s|<key>CFBundleDisplayName</key><string>Supremacy</string>|<key>CFBundleDisplayName</key><string>$NAME</string>|" \
     "$APP/Contents/Info.plist" > "$APP/Contents/Info.plist.new"
 mv "$APP/Contents/Info.plist.new" "$APP/Contents/Info.plist"

@@ -30,6 +30,7 @@ void settings_defaults(Settings *s, const char *base)
     s->fullscreen = 0;
     s->scanlines = 0;
     s->display = 0;
+    s->hires = 1;
     s->trainer = 0;
     s->bugfixes = 0;
     s->touch = 0;
@@ -62,6 +63,7 @@ void settings_load(Settings *s, const char *path)
         else if (!strcmp(k, "scale")) s->scale = SDL_clamp(SDL_atoi(v), 1, 12);
         else if (!strcmp(k, "fullscreen")) s->fullscreen = SDL_atoi(v) != 0;
         else if (!strcmp(k, "scanlines")) s->scanlines = SDL_atoi(v) != 0;
+        else if (!strcmp(k, "hires")) s->hires = SDL_atoi(v) != 0;
         else if (!strcmp(k, "display")) s->display = SDL_clamp(SDL_atoi(v), 0, 2);
         else if (!strcmp(k, "trainer")) s->trainer = SDL_atoi(v) != 0;
         else if (!strcmp(k, "bugfixes")) s->bugfixes = SDL_atoi(v) != 0;
@@ -78,8 +80,8 @@ int settings_save(const Settings *s, const char *path)
     if (!f) return -1;
     fprintf(f, "# Supremacy launcher settings (speed 0 = normal, 1-4 = x1.25 .. x2)\n"
                "data=%s\nintro=%d\nopponent=%d\nspeed=%d\n"
-               "scale=%d\nfullscreen=%d\nscanlines=%d\ndisplay=%d\ntrainer=%d\nbugfixes=%d\ntouch=%d\nlauncher_w=%d\nlauncher_h=%d\n",
-            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->display, s->trainer, s->bugfixes, s->touch,
+               "scale=%d\nfullscreen=%d\nscanlines=%d\ndisplay=%d\nhires=%d\ntrainer=%d\nbugfixes=%d\ntouch=%d\nlauncher_w=%d\nlauncher_h=%d\n",
+            s->data, s->intro, s->opponent, s->speed, s->scale, s->fullscreen, s->scanlines, s->display, s->hires, s->trainer, s->bugfixes, s->touch,
             s->win_w, s->win_h);
     return fclose(f) == 0 ? 0 : -1;
 }
@@ -666,6 +668,13 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
             if (!touch_present()) text(ren, V + 76 + 8 * (float)strlen(dh[s->display % 3]) + 12, y + 4, C_DIM, "F12");
             y += 24;
         }
+
+        /* hi-res pictures */
+        text(ren, L, y + 4, C_TEXT, "HI-RES PICTURES");
+        b = button(ren, V, y, 64, s->hires ? "ON" : "OFF", hv(V, y, 64, 16, mx, my), 1);
+        if (CLICKED(b)) s->hires = !s->hires;
+        text(ren, V + 76, y + 4, C_DIM, "USED WHEN A HIRES FOLDER IS THERE");
+        y += 24;
 
         /* scanlines */
         text(ren, L, y + 4, C_TEXT, "SCANLINES");

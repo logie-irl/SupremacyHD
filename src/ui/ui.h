@@ -79,6 +79,7 @@ UI_API int  ui_game_pass(MainUI *m, uint32_t *status);
 UI_API void ui_exit_to_main(MainUI *m);
 /* $2C62: show the picture at `addr` (its palette into m->colour). */
 UI_API void ui_show_picture(MainUI *m, uint32_t addr);
+UI_API extern uint32_t ui_last_picture;       /* address of the picture shown last (for hi-res packs) */
 /* the original's memory, read: the block where it covers the address,
  * else the image */
 UI_API uint8_t  ui_m8(MainUI *m, uint32_t a);

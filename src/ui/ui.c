@@ -101,8 +101,11 @@ int ui_game_pass(MainUI *m, uint32_t *status)
     return UI_OK;
 }
 
+uint32_t ui_last_picture;
+
 void ui_show_picture(MainUI *m, uint32_t addr)
 {
+    ui_last_picture = addr;
     if (m->image) picture_unpack_raw(m->image, addr, m->s->bpl, m->colour);
 }
 

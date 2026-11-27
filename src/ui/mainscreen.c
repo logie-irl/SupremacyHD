@@ -329,6 +329,7 @@ static void panel_static(Game *g, int i, uint16_t v)          /* $46A8 */
 
 void main_new_game_screen(MainUI *m)
 {
+    ui_last_picture = MAIN_PICTURE;
     if (m->image) picture_unpack_raw(m->image, MAIN_PICTURE, m->s->bpl, m->colour);
     m->g->user = m;
     m->g->panel_static_hook = panel_static;
@@ -342,6 +343,7 @@ void main_new_game_done(MainUI *m)
 
 void main_enter(MainUI *m)
 {
+    ui_last_picture = MAIN_PICTURE;
     if (m->image) picture_unpack_raw(m->image, MAIN_PICTURE, m->s->bpl, m->colour);
     ui_panel_restore(m);
     main_reenter(m);
