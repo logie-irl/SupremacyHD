@@ -281,6 +281,7 @@ static int app_event(App *a, const SDL_Event *ev)
             a->trainer = !a->trainer;
             if (!a->trainer) a->peace = 0;      /* run_game switches peace off in the game */
             app_title(a);
+            if (a->trainer) trainer_help(a->win);   /* what the keys do, with an OK button */
         }
         return 1;
     }

@@ -184,6 +184,25 @@ static void pick(SDL_Window *win, int target, const char *initial)
     else SDL_ShowOpenFileDialog(dlg_result, (void *)3, win, arcs, 2, initial, true);
 }
 
+void trainer_help(SDL_Window *win)
+{
+    static const SDL_MessageBoxButtonData ok[] = {
+        {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT | SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "OK"}};
+    const SDL_MessageBoxData box = {
+        SDL_MESSAGEBOX_INFORMATION, win, "Trainer on",
+        "The trainer's keys, in the game (on a MacBook hold Fn):\n\n"
+        "F5  +100,000 credits on each of your planets\n"
+        "F6  food, minerals, fuels and energy filled to 30,000\n"
+        "F7  population doubled (up to 30,000), morale 100\n"
+        "F9  peace on or off: the enemy sends no attacks, and\n"
+        "      enemy forces on your planets are cleared\n"
+        "F8  trainer on or off (off also ends peace)\n\n"
+        "The cheats change only your own planets and never work during a replay.",
+        1, ok, NULL};
+    int id;
+    SDL_ShowMessageBox(&box, &id);
+}
+
 static int data_ok(const char *dir, char *why, size_t n)
 {
     static const char *need[] = {"GAM1", "GAM2", "INT1", "INT2", "WINM", "DIEM"};
@@ -670,7 +689,10 @@ int launcher_run(SDL_Window *win, SDL_Renderer *ren, Settings *s, const char *ba
         if (CLICKED(b)) s->scanlines = !s->scanlines;
         text(ren, V + 84, y + 4, C_TEXT, "TRAINER");
         b = button(ren, V + 148, y, 64, s->trainer ? "ON" : "OFF", hv(V + 148, y, 64, 16, mx, my), 1);
-        if (CLICKED(b)) s->trainer = !s->trainer;
+        if (CLICKED(b)) {
+            s->trainer = !s->trainer;
+            if (s->trainer) trainer_help(win);
+        }
         text(ren, V + 220, y + 4, C_DIM, "F10 / F8 IN GAME");
         y += 24;
 
